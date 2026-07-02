@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geo-Deportes: Navegación & Estadios</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --accent-nfl:        #4f8ef7;
+            --accent-soccer:     #10b981;
+            --accent-basketball: #f97316;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0; padding: 0;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* ─── LAYOUT ─────────────────────────────── */
+        .app-wrapper {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 420px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            gap: 24px;
+            flex-shrink: 0;
+            max-height: 100vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--bg-card) transparent;
+        }
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--bg-card); border-radius: 3px; }
+
+        /* ─── HEADER ─────────────────────────────── */
+        .header { border-bottom: 1px solid var(--border-glass); padding-bottom: 16px; }
+        .header h1 {
+            margin: 0;
+            font-size: 24px; font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa 0%, #34d399 50%, #fbbf24 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+        .header p { margin: 6px 0 0 0; font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
+        /* ─── SECTION LABELS ─────────────────────── */
+        .section-title {
+            font-size: 12px; text-transform: uppercase;
+            letter-spacing: .1em; color: var(--text-muted);
+            font-weight: 700; margin: 0 0 12px 0;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .panel-block {
+            background: rgba(255,255,255,.03);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px; padding: 16px;
+        }
+
+        /* ─── SPORT CATEGORY ACCORDION ───────────── */
+        .sport-category { margin-bottom: 4px; }
+
+        .sport-category-header {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%; padding: 11px 14px;
+            border: 1px solid var(--border-glass);
+            border-radius: 10px;
+            background: rgba(255,255,255,.03);
+            cursor: pointer;
+            font-size: 14px; font-weight: 700;
+            color: var(--text-main);
+            transition: var(--transition);
+            user-select: none;
+        }
+        .sport-category-header:hover { background: rgba(255,255,255,.07); }
+        .sport-category-header.open  { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+        /* Accent stripe on the left for each sport */
+        .sport-nfl .sport-category-header        { border-left: 4px solid var(--accent-nfl); }
+        .sport-soccer .sport-category-header      { border-left: 4px solid var(--accent-soccer); }
+        .sport-basketball .sport-category-header  { border-left: 4px solid var(--accent-basketball); }
+
+        .sport-icon { font-size: 20px; }
+        .sport-label { flex-grow: 1; text-align: left; }
+        .sport-count {
+            font-size: 11px; font-weight: 600;
+            padding: 2px 8px; border-radius: 20px;
+            background: rgba(255,255,255,.08);
+            color: var(--text-muted);
+        }
+        .chevron {
+            font-size: 12px; transition: transform .3s ease; color: var(--text-muted);
+        }
+        .sport-category-header.open .chevron { transform: rotate(180deg); }
+
+        /* Collapsible team list */
+        .sport-teams-list {
+            max-height: 0; overflow: hidden;
+            transition: max-height .4s cubic-bezier(0.4,0,0.2,1), opacity .3s ease;
+            opacity: 0;
+            border: 1px solid var(--border-glass);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+        }
+        .sport-teams-list.open {
+            max-height: 600px; opacity: 1;
+        }
+        .sport-teams-list-inner { padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+
+        /* ─── TEAM CARDS ─────────────────────────── */
+        .team-card {
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(255,255,255,.02);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            user-select: none;
+        }
+        .team-card:hover { background: rgba(255,255,255,.06); border-color: var(--border-glass); }
+        .team-card.selected {
+            background: rgba(255,255,255,.09);
+            box-shadow: 0 0 0 2px var(--accent-color, #60a5fa);
+        }
+        .team-card-emoji {
+            font-size: 24px; width: 40px; height: 40px;
+            background: rgba(255,255,255,.05);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .team-card-info { flex-grow: 1; }
+        .team-card-name  { font-weight: 600; font-size: 14px; margin: 0; }
+        .team-card-city  { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
+
+        /* ─── DETAIL PANEL ───────────────────────── */
+        .detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .sport-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; }
+        .badge-nfl        { background: rgba(79,142,247,.2);   color: #93c5fd; border: 1px solid rgba(79,142,247,.3); }
+        .badge-soccer     { background: rgba(16,185,129,.2);   color: #34d399; border: 1px solid rgba(16,185,129,.3); }
+        .badge-basketball { background: rgba(249,115,22,.2);   color: #fdba74; border: 1px solid rgba(249,115,22,.3); }
+        .detail-stadium { font-size: 14px; font-weight: 600; margin: 8px 0; display: flex; align-items: center; gap: 6px; }
+        .detail-history { font-size: 13px; line-height: 1.6; color: var(--text-muted); margin: 10px 0 0; }
+        .detail-stat {
+            background: rgba(255,255,255,.05); border-radius: 8px;
+            padding: 8px 12px; font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 12px; border-left: 4px solid var(--accent-color, #60a5fa);
+        }
+
+        /* ─── GPS BOX ────────────────────────────── */
+        .gps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; margin-bottom: 14px; }
+        .gps-item { background: rgba(255,255,255,.02); border: 1px solid var(--border-glass); border-radius: 8px; padding: 8px 10px; }
+        .gps-item-label { color: var(--text-muted); margin-bottom: 3px; font-size: 11px; font-weight: 500; }
+        .gps-item-val   { font-weight: 700; font-family: monospace; font-size: 13px; }
+
+        .btn-gps {
+            width: 100%;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border: none; border-radius: 8px; color: white;
+            padding: 12px; font-size: 14px; font-weight: 700;
+            cursor: pointer; transition: var(--transition);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-gps:hover { opacity: .9; transform: scale(1.01); box-shadow: 0 4px 12px rgba(59,130,246,.3); }
+
+        /* ─── PROMO TICKETS ──────────────────────── */
+        .promos-list { display: flex; flex-direction: column; gap: 12px; }
+        .promo-ticket {
+            border: 1px dashed var(--border-glass);
+            border-radius: 8px; padding: 14px;
+            background: rgba(255,255,255,.03);
+        }
+        .promo-ticket-title { font-size: 14px; font-weight: 700; margin: 0; }
+        .promo-ticket-desc  { font-size: 12px; color: var(--text-muted); margin: 6px 0 10px; line-height: 1.5; }
+        .promo-ticket-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            border-top: 1px dashed var(--border-glass); padding-top: 8px; margin-top: 8px;
+        }
+        .promo-code {
+            font-family: monospace; font-size: 13px; font-weight: 700;
+            color: var(--accent-color, #fbbf24);
+            background: rgba(251,191,36,.1); padding: 3px 8px; border-radius: 4px;
+            cursor: pointer; transition: var(--transition);
+        }
+        .promo-code:hover { background: rgba(251,191,36,.2); }
+        .promo-expiry { font-size: 10px; color: var(--text-muted); }
+
+        /* ─── SHARE ──────────────────────────────── */
+        .share-controls { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        .btn-share-trigger {
+            width: 100%; background: rgba(255,255,255,.05);
+            border: 1px solid var(--border-glass); border-radius: 8px;
+            color: var(--text-main); padding: 10px; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: var(--transition);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-share-trigger:hover { background: rgba(255,255,255,.08); }
+        .share-dropdown { display: flex; flex-direction: column; gap: 6px; max-height: 0; opacity: 0; overflow: hidden; transition: var(--transition); }
+        .share-dropdown.open { max-height: 200px; opacity: 1; margin-top: 8px; }
+        .btn-share-item {
+            width: 100%; padding: 10px; border: none; border-radius: 6px; color: white;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 10px; transition: var(--transition);
+        }
+        .btn-share-fb { background-color: #1877F2; }
+        .btn-share-fb:hover { background-color: #166fe5; }
+        .btn-share-wa { background-color: #25D366; }
+        .btn-share-wa:hover { background-color: #20ba5a; }
+        .btn-share-ig { background: linear-gradient(45deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); }
+        .btn-share-ig:hover { opacity: .9; }
+        .btn-share-item svg { width: 16px; height: 16px; fill: currentColor; }
+
+        /* ─── MAP AREA ───────────────────────────── */
+        .main-map-container { flex-grow: 1; height: 100vh; position: relative; display: flex; flex-direction: column; }
+        #map { width: 100%; height: 100%; z-index: 1; }
+
+        /* Route Overlay */
+        .route-overlay {
+            position: absolute; top: 24px; right: 24px;
+            background: rgba(15,23,42,.88); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass); border-radius: 16px;
+            padding: 20px; z-index: 1000; width: 320px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,.3);
+        }
+        .route-overlay-header {
+            font-weight: 700; font-size: 15px; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px; color: #38bdf8;
+            border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;
+        }
+        .route-info-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .route-info-label { color: var(--text-muted); }
+        .route-info-val   { font-weight: 700; }
+
+        /* Floating zoom buttons */
+        .map-controls-floating { position: absolute; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+        .btn-floating {
+            width: 44px; height: 44px; border-radius: 12px;
+            background: rgba(15,23,42,.85); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass); color: var(--text-main);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 18px; font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0,0,0,.2); transition: var(--transition);
+        }
+        .btn-floating:hover { background: var(--bg-secondary); color: #38bdf8; }
+
+        /* Leaflet popup skin */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-secondary) !important; color: var(--text-main) !important;
+            border: 1px solid var(--border-glass); border-radius: 12px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,.3) !important;
+        }
+        .leaflet-popup-tip { background: var(--bg-secondary) !important; }
+        .leaflet-popup-close-button { color: var(--text-muted) !important; }
+
+        /* Banners */
+        .alert-banner {
+            font-size: 12px; padding: 8px 12px; border-radius: 8px;
+            margin-top: 10px; display: flex; align-items: center; gap: 8px;
+            background: rgba(239,68,68,.1); color: #f87171;
+            border: 1px solid rgba(239,68,68,.2);
+        }
+        .alert-banner.info {
+            background: rgba(59,130,246,.1); color: #93c5fd;
+            border: 1px solid rgba(59,130,246,.2);
+        }
+        .alert-banner.success {
+            background: rgba(16,185,129,.1); color: #34d399;
+            border: 1px solid rgba(16,185,129,.2);
+        }
+
+        /* Botón Guardar Ruta */
+        .btn-guardar-ruta {
+            width: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none; border-radius: 8px; color: white;
+            padding: 12px; font-size: 14px; font-weight: 700;
+            cursor: pointer; transition: var(--transition);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin-top: 16px;
+        }
+        .btn-guardar-ruta:hover { opacity: .9; transform: scale(1.01); box-shadow: 0 4px 12px rgba(16,185,129,.3); }
+
+        /* Controles de Rutas Guardadas */
+        .btn-route-action {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: var(--transition);
+        }
+        .btn-route-action:hover {
+            background: rgba(255,255,255,.1) !important;
+            border-color: rgba(255,255,255,.2) !important;
+        }
+        #btnDeleteSavedRoute:hover {
+            background: rgba(239,68,68,.2) !important;
+            border-color: rgba(239,68,68,.3) !important;
+        }
+        .btn-route-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        input[type="checkbox"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        input[type="checkbox"]:disabled + label {
+            color: var(--text-muted) !important;
+            cursor: not-allowed;
+        }
+
+        /* ─── RESPONSIVE ─────────────────────────── */
+        @media (max-width: 992px) {
+            .app-wrapper { flex-direction: column; }
+            .sidebar { width: 100%; max-height: 52vh; }
+            .main-map-container { height: 48vh; }
+            .route-overlay { top: 10px; right: 10px; width: calc(100% - 20px); }
+        }
+    </style>
+</head>
+
+<body>
+<div class="app-wrapper">
+
+    <!-- ═══ SIDEBAR ════════════════════════════════════ -->
+    <aside class="sidebar">
+
+        <header class="header">
+            <h1>📍 Geo-Deportes</h1>
+            <p>Navegador de Estadios &bull; SOA / POO</p>
+        </header>
+
+        <!-- 1. SELECTOR DE EQUIPOS POR CATEGORÍA -->
+        <section>
+            <h3 class="section-title">🏆 Selecciona un Equipo</h3>
+            <div id="teamsContainer">
+                <p style="color:var(--text-muted);font-size:13px;">Cargando desde el servicio...</p>
+            </div>
+        </section>
+
+        <!-- 2. DETALLE DEL EQUIPO -->
+        <section id="detailSection" style="display:none;">
+            <h3 class="section-title">📋 Detalles del Club</h3>
+            <div class="panel-block" id="teamDetailsBox"></div>
+        </section>
+
+        <!-- 2.5. RUTAS GUARDADAS -->
+        <section id="savedRoutesSection">
+            <h3 class="section-title">🗺️ Rutas Guardadas</h3>
+            <div class="panel-block">
+                <div style="margin-bottom: 12px;">
+                    <label for="selectSavedRoutes" style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Seleccionar Ruta</label>
+                    <select id="selectSavedRoutes" onchange="app.seleccionarRutaGuardada(this.value)" style="width: 100%; background: var(--bg-card); border: 1px solid var(--border-glass); color: var(--text-main); border-radius: 8px; padding: 10px; font-size: 13px; outline: none; cursor: pointer; transition: var(--transition);">
+                        <option value="">-- Selecciona una ruta guardada --</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; background: rgba(255,255,255,.02); border: 1px solid var(--border-glass); padding: 8px 10px; border-radius: 8px;">
+                    <input type="checkbox" id="chkHighlightRed" onchange="app.toggleResaltadoRuta(this.checked)" style="cursor: pointer; width: 16px; height: 16px; accent-color: #ef4444;">
+                    <label for="chkHighlightRed" style="font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-main); user-select: none;">🔴 Resaltar en Rojo</label>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-route-action" id="btnToggleSavedRoute" onclick="app.toggleMostrarRuta()" style="flex: 1; background: rgba(255,255,255,.05); border: 1px solid var(--border-glass); border-radius: 8px; color: var(--text-main); padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: var(--transition);">
+                        <span id="iconToggleSavedRoute">👁️</span> <span id="textToggleSavedRoute">Mostrar Ruta</span>
+                    </button>
+                    <button class="btn-route-action" id="btnDeleteSavedRoute" onclick="app.eliminarRutaGuardada()" style="background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; color: #f87171; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: var(--transition);" title="Eliminar Ruta">
+                        🗑️
+                    </button>
+                </div>
+                <div id="savedRoutesStatus" style="margin-top: 8px;"></div>
+            </div>
+        </section>
+
+        <!-- 3. GEOLOCALIZACIÓN -->
+        <section>
+            <h3 class="section-title">📡 Geolocalización Satelital</h3>
+            <div class="panel-block">
+                <div class="gps-grid">
+                    <div class="gps-item">
+                        <div class="gps-item-label">LATITUD</div>
+                        <div class="gps-item-val" id="valLat">---</div>
+                    </div>
+                    <div class="gps-item">
+                        <div class="gps-item-label">LONGITUD</div>
+                        <div class="gps-item-val" id="valLng">---</div>
+                    </div>
+                    <div class="gps-item">
+                        <div class="gps-item-label">PRECISIÓN</div>
+                        <div class="gps-item-val" id="valAcc">---</div>
+                    </div>
+                    <div class="gps-item" style="grid-column:span 2;">
+                        <div class="gps-item-label">FECHA Y HORA</div>
+                        <div class="gps-item-val" id="valTime" style="font-size:11px;">---</div>
+                    </div>
+                </div>
+                <button class="btn-gps" id="btnGps" onclick="app.obtenerUbicacionUsuario()">
+                    <span>📍</span> Obtener mi ubicación
+                </button>
+                <div id="gpsStatusBanner"></div>
+            </div>
+        </section>
+
+        <!-- 4. PROMOCIONES -->
+        <section id="promosSection" style="display:none;">
+            <h3 class="section-title">🎟️ Promociones Exclusivas</h3>
+            <div class="promos-list" id="promosContainer"></div>
+        </section>
+
+        <!-- 5. COMPARTIR -->
+        <section id="shareSection" style="display:none;">
+            <h3 class="section-title">📲 Compartir Información</h3>
+            <div class="share-controls">
+                <button class="btn-share-trigger" onclick="app.toggleShareMenu()">
+                    <span>🔗</span> Difundir en redes sociales
+                </button>
+                <div class="share-dropdown" id="shareMenu">
+                    <button class="btn-share-item btn-share-fb" onclick="app.compartirRed('facebook')">
+                        <svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        Compartir en Facebook
+                    </button>
+                    <button class="btn-share-item btn-share-wa" onclick="app.compartirRed('whatsapp')">
+                        <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.863-9.736.001-2.599-1.01-5.043-2.848-6.883-1.838-1.84-4.286-2.85-6.887-2.85-5.443 0-9.87 4.371-9.872 9.741-.001 1.902.502 3.753 1.456 5.367L1.991 21.95l6.009-1.576c-.524.32-.239.146-.653-.78zm11.303-3.093c-.305-.153-1.805-.89-2.083-.99-.279-.101-.482-.153-.684.153-.202.306-.783.99-.959 1.193-.177.203-.354.228-.659.076-.305-.153-1.288-.475-2.456-1.517-.908-.81-1.52-1.812-1.698-2.118-.178-.306-.019-.471.134-.622.137-.137.305-.355.457-.533.153-.178.203-.305.305-.508.102-.203.051-.381-.025-.533-.076-.153-.684-1.65-.938-2.26-.247-.595-.499-.513-.684-.522-.178-.009-.381-.01-.583-.01-.203 0-.533.076-.813.381-.28.305-1.066 1.042-1.066 2.54 0 1.498 1.091 2.946 1.243 3.149.153.203 2.148 3.28 5.204 4.602.727.314 1.294.502 1.737.643.73.232 1.396.199 1.922.121.587-.087 1.805-.737 2.058-1.45.253-.713.253-1.32.177-1.45-.076-.127-.279-.203-.584-.356z"/></svg>
+                        Enviar por WhatsApp
+                    </button>
+                    <button class="btn-share-item btn-share-ig" onclick="app.compartirRed('instagram')">
+                        📸 Copiar Datos & Abrir Instagram
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </aside>
+
+    <!-- ═══ MAPA ════════════════════════════════════════ -->
+    <main class="main-map-container">
+
+        <!-- Overlay de ruta -->
+        <div class="route-overlay" id="routeOverlay" style="display:none;">
+            <div class="route-overlay-header"><span>🚗</span> Ruta y Distancia de Viaje</div>
+            <div class="route-info-row">
+                <span class="route-info-label">Origen:</span>
+                <span class="route-info-val" style="color:#60a5fa;">Mi ubicación GPS</span>
+            </div>
+            <div class="route-info-row">
+                <span class="route-info-label">Estadio:</span>
+                <span class="route-info-val" id="lblTargetStadium" style="color:#34d399;">---</span>
+            </div>
+            <div class="route-info-row" style="margin-top:10px;border-top:1px dashed var(--border-glass);padding-top:10px;">
+                <span class="route-info-label">Distancia Aérea:</span>
+                <span class="route-info-val" id="lblDistanceText" style="font-size:16px;color:#fbbf24;">---</span>
+            </div>
+            <div class="route-info-row">
+                <span class="route-info-label">Tiempo a 60 km/h:</span>
+                <span class="route-info-val" id="lblTimeText" style="color:#cbd5e1;">---</span>
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <!-- Zoom buttons -->
+        <div class="map-controls-floating">
+            <button class="btn-floating" onclick="app.zoomIn()"  title="Acercar">+</button>
+            <button class="btn-floating" onclick="app.zoomOut()" title="Alejar">−</button>
+        </div>
+    </main>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  1. PROGRAMACIÓN ORIENTADA A OBJETOS (POO)
+// ════════════════════════════════════════════════════════
+
+/**
+ * Clase base con encapsulamiento básico (campo privado #historia).
+ */
+class Equipo {
+    #historia;                       // Encapsulamiento: campo privado
+
+    constructor(id, nombre, pais, ciudad, historia, latitud, longitud, estadio, logo, emoji, color, cualidades, defectos) {
+        this.id        = id;
+        this.nombre    = nombre;
+        this.pais      = pais;
+        this.ciudad    = ciudad;
+        this.#historia = historia;  // Solo accesible desde el getter
+        this.latitud   = latitud;
+        this.longitud  = longitud;
+        this.estadio   = estadio;
+        this.logo      = logo;       // URL del logo oficial
+        this.emoji     = emoji;
+        this.color     = color;
+        this.cualidades = cualidades || [];
+        this.defectos   = defectos   || [];
+    }
+
+    /** Getter público — expone #historia de forma controlada */
+    get historia() { return this.#historia; }
+
+    /** Polimorfismo: cada subclase sobreescribe este método */
+    obtenerLogrosHTML() { return ''; }
+}
+
+/** Subclase NFL — Herencia de Equipo */
+class EquipoNFL extends Equipo {
+    constructor(id, nombre, pais, ciudad, historia, latitud, longitud, estadio, logo, emoji, color, cualidades, defectos, superBowls) {
+        super(id, nombre, pais, ciudad, historia, latitud, longitud, estadio, logo, emoji, color, cualidades, defectos);
+        this.superBowls = superBowls;
+    }
+    obtenerLogrosHTML() {
+        return `<strong>Super Bowls ganados:</strong> <span>${this.superBowls} 🏆</span>`;
+    }
+}
+
+/** Subclase Soccer — Herencia de Equipo */
+class EquipoSoccer extends Equipo {
+    constructor(id, nombre, pais, ciudad, historia, latitud, longitud, estadio, logo, emoji, color, cualidades, defectos, copas) {
+        super(id, nombre, pais, ciudad, historia, latitud, longitud, estadio, logo, emoji, color, cualidades, defectos);
+        this.copas = copas;
+    }
+    obtenerLogrosHTML() {
+        return `<strong>Champions / Copas ganadas:</strong> <span>${this.copas} 🏆</span>`;
+    }
+}
+
+/** Subclase Basketball — Herencia de Equipo */
+class EquipoBasquetbol extends Equipo {
+    constructor(id, nombre, pais, ciudad, historia, latitud, longitud, estadio, logo, emoji, color, cualidades, defectos, campeonatosNBA) {
+        super(id, nombre, pais, ciudad, historia, latitud, longitud, estadio, logo, emoji, color, cualidades, defectos);
+        this.campeonatosNBA = campeonatosNBA;
+    }
+    obtenerLogrosHTML() {
+        return `<strong>Campeonatos NBA ganados:</strong> <span>${this.campeonatosNBA} 🏆</span>`;
+    }
+}
+
+
+// ════════════════════════════════════════════════════════
+//  2. ARQUITECTURA ORIENTADA A SERVICIOS (SOA) — Simulada
+// ════════════════════════════════════════════════════════
+
+// ── DATOS LOCALES DE RESPALDO (Para soportar protocolo file://) ──
+const FALLBACK_EQUIPOS = [
+  {
+    "id": "patriots",
+    "nombre": "New England Patriots",
+    "deporte": "NFL",
+    "pais": "Estados Unidos",
+    "ciudad": "Foxborough, Boston",
+    "historia": "Fundados en 1959 como los Boston Patriots, son una de las franquicias más exitosas en la historia de la NFL. Lograron una época dorada de dos décadas liderada por Tom Brady y Bill Belichick, redefiniendo el deporte con su mentalidad ganadora y consistencia competitiva.",
+    "estadio": "Gillette Stadium",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/b/b9/New_England_Patriots_logo.svg",
+    "latitud": 42.090944,
+    "longitud": -71.264344,
+    "emoji": "🏈",
+    "color": "#4f8ef7",
+    "superBowls": 6,
+    "cualidades": ["Franquicia más ganadora de la era moderna", "Sistema defensivo de élite", "Gestión de talento excepcional"],
+    "defectos": ["Polémicas por Deflategate y Spygate", "Dificultad para retener jugadores clave", "Era post-Brady incierta"]
+  },
+  {
+    "id": "cowboys",
+    "nombre": "Dallas Cowboys",
+    "deporte": "NFL",
+    "pais": "Estados Unidos",
+    "ciudad": "Arlington, Dallas",
+    "historia": "Conocidos como 'El Equipo de América', se unieron a la NFL en 1960. Son una de las marcas deportivas más valiosas del planeta, caracterizados por su espectacular estrella azul en el casco y una enorme base de fanáticos en todo el mundo.",
+    "estadio": "AT&T Stadium",
+    "logo": "https://upload.wikimedia.org/wikipedia/commons/1/15/Dallas_Cowboys.svg",
+    "latitud": 32.747284,
+    "longitud": -97.092784,
+    "emoji": "🏈",
+    "color": "#869397",
+    "superBowls": 5,
+    "cualidades": ["Marca deportiva más valiosa del mundo", "Fanbase global masiva", "Infraestructura AT&T Stadium de primer nivel"],
+    "defectos": ["Sin Super Bowl desde 1995", "Controversias en la gerencia", "Inconsistencia en playoffs recientes"]
+  },
+  {
+    "id": "chiefs",
+    "nombre": "Kansas City Chiefs",
+    "deporte": "NFL",
+    "pais": "Estados Unidos",
+    "ciudad": "Kansas City, Missouri",
+    "historia": "Fundados en 1960 en Dallas como los Texans, los Chiefs son hoy la franquicia más dominante de la era moderna de la NFL. Con Patrick Mahomes al frente, han ganado múltiples Super Bowls y representan la cúspide del fútbol americano actual.",
+    "estadio": "GEHA Field at Arrowhead Stadium",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/e/e1/Kansas_City_Chiefs_logo.svg",
+    "latitud": 39.048914,
+    "longitud": -94.484169,
+    "emoji": "🏈",
+    "color": "#e31837",
+    "superBowls": 4,
+    "cualidades": ["Quarterback élite Patrick Mahomes", "Múltiples Super Bowls recientes", "Organización muy bien administrada"],
+    "defectos": ["Dependencia extrema de Mahomes", "Poca profundidad en la línea ofensiva", "Dificultades en defensa en años recientes"]
+  },
+  {
+    "id": "realmadrid",
+    "nombre": "Real Madrid C.F.",
+    "deporte": "Soccer",
+    "pais": "España",
+    "ciudad": "Madrid, España",
+    "historia": "Fundado en 1902, es considerado el club de fútbol más laureado y famoso del mundo. Con un palmarés inigualable y una mística única en la UEFA Champions League, su estadio el Santiago Bernabéu es un auténtico templo del balompié mundial.",
+    "estadio": "Estadio Santiago Bernabéu",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg",
+    "latitud": 40.453054,
+    "longitud": -3.688344,
+    "emoji": "⚽",
+    "color": "#FEBE10",
+    "copas": 15,
+    "cualidades": ["Mayor colección de Champions League en la historia", "Capacidad de remontar partidos clave", "Estadio Bernabéu renovado de clase mundial"],
+    "defectos": ["Alto costo de nómina e inversión", "Presión mediática constante", "Rotación frecuente de entrenadores"]
+  },
+  {
+    "id": "barcelona",
+    "nombre": "F.C. Barcelona",
+    "deporte": "Soccer",
+    "pais": "España",
+    "ciudad": "Barcelona, España",
+    "historia": "Bajo el lema 'Més que un club' (Más que un club), el FC Barcelona fue fundado en 1899. Famoso por su estilo de juego vistoso basado en la posesión de balón y su prestigiosa academia 'La Masía', donde se formó Lionel Messi.",
+    "estadio": "Spotify Camp Nou",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg",
+    "latitud": 41.380896,
+    "longitud": 2.122820,
+    "emoji": "⚽",
+    "color": "#A50044",
+    "copas": 5,
+    "cualidades": ["Sistema de juego tiki-taka único", "Academia La Masía de fama mundial", "Identidad cultural y política fuerte"],
+    "defectos": ["Crisis económica y deuda significativa", "Salida de Messi impactó la imagen", "Irregularidad en Champions League reciente"]
+  },
+  {
+    "id": "chivas",
+    "nombre": "Chivas de Guadalajara",
+    "deporte": "Soccer",
+    "pais": "México",
+    "ciudad": "Guadalajara, México",
+    "historia": "El 'Rebaño Sagrado', fundado en 1906, es el equipo más popular de México y el único que solo contrata jugadores mexicanos. Con 12 títulos de liga, juegan en el moderno Estadio Akron y representan la identidad nacional del fútbol mexicano.",
+    "estadio": "Estadio Akron",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/9/90/Club_Deportivo_Guadalajara.svg",
+    "latitud": 20.686944,
+    "longitud": -103.461944,
+    "emoji": "⚽",
+    "color": "#cc0000",
+    "copas": 12,
+    "cualidades": ["Solo fichaje de jugadores mexicanos", "El equipo más popular en México", "Estadio Akron moderno y de alta capacidad"],
+    "defectos": ["Política de solo mexicanos limita opciones", "Sequía de títulos en años recientes", "Alta expectativa vs resultados inconsistentes"]
+  },
+  {
+    "id": "lakers",
+    "nombre": "Los Angeles Lakers",
+    "deporte": "Basketball",
+    "pais": "Estados Unidos",
+    "ciudad": "Los Ángeles, California",
+    "historia": "Uno de los equipos más icónicos de la NBA, fundado en 1947. Hogar de leyendas inmortales como Kareem Abdul-Jabbar, Magic Johnson, Shaquille O'Neal y Kobe Bryant. Su estadio, el Crypto.com Arena, es un coliseo del entretenimiento en el corazón de Hollywood.",
+    "estadio": "Crypto.com Arena",
+    "logo": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Los_Angeles_Lakers_logo.svg",
+    "latitud": 34.043056,
+    "longitud": -118.267222,
+    "emoji": "🏀",
+    "color": "#552583",
+    "campeonatosNBA": 17,
+    "cualidades": ["17 campeonatos NBA, los más de la historia", "Sede en Hollywood con alta visibilidad", "Atracción de superestrellas históricas"],
+    "defectos": ["Gestión front office inestable", "LeBron James en declive físico", "Dificultad para retener jugadores de nivel"]
+  },
+  {
+    "id": "bulls",
+    "nombre": "Chicago Bulls",
+    "deporte": "Basketball",
+    "pais": "Estados Unidos",
+    "ciudad": "Chicago, Illinois",
+    "historia": "Los Bulls son sinónimo de grandeza gracias a Michael Jordan, el mejor jugador de todos los tiempos. Durante los años 90 dominaron la NBA con seis campeonatos en dos triadas de títulos consecutivos, bajo la dirección del coach Phil Jackson.",
+    "estadio": "United Center",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/6/67/Chicago_Bulls_logo.svg",
+    "latitud": 41.880556,
+    "longitud": -87.674167,
+    "emoji": "🏀",
+    "color": "#CE1141",
+    "campeonatosNBA": 6,
+    "cualidades": ["Legado de Michael Jordan inigualable", "United Center con ambiente eléctrico", "Marca global de alto reconocimiento"],
+    "defectos": ["Sin títulos desde 1998", "Reconstrucción lenta del roster", "Sombra de Jordan dificulta motivación"]
+  },
+  {
+    "id": "warriors",
+    "nombre": "Golden State Warriors",
+    "deporte": "Basketball",
+    "pais": "Estados Unidos",
+    "ciudad": "San Francisco, California",
+    "historia": "Los Warriors redefinieron el baloncesto moderno con su sistema de juego basado en el triple y la rapidez ('Splash Brothers'). Con Stephen Curry y Klay Thompson, dominaron la NBA durante la década de 2010, ganando 4 campeonatos en 8 años.",
+    "estadio": "Chase Center",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/0/01/Golden_State_Warriors_logo.svg",
+    "latitud": 37.768056,
+    "longitud": -122.387778,
+    "emoji": "🏀",
+    "color": "#1D428A",
+    "campeonatosNBA": 7,
+    "cualidades": ["Revolucionaron el juego con el triple", "Stephen Curry el mejor tirador de la historia", "Chase Center moderno en San Francisco"],
+    "defectos": ["Plantilla envejeciendo con Curry y Thompson", "Salida de Klay Thompson al equipo rival", "Dificultad para repetir dominancia pasada"]
+  }
+];
+
+const FALLBACK_PROMOCIONES = [
+  {
+    "equipoId": "patriots",
+    "titulo": "Jersey Oficial con Descuento",
+    "descripcion": "Obtén un 20% de descuento en el jersey oficial de los New England Patriots utilizando este código en la tienda oficial en línea.",
+    "codigo": "PATS20OFF",
+    "validoHasta": "31 de Diciembre, 2026"
+  },
+  {
+    "equipoId": "patriots",
+    "titulo": "Pase de Estacionamiento Gratis",
+    "descripcion": "En la compra de 2 boletos para cualquier partido en casa en el Gillette Stadium, llévate el pase de estacionamiento de forma gratuita.",
+    "codigo": "GILLETTEPARK",
+    "validoHasta": "30 de Noviembre, 2026"
+  },
+  {
+    "equipoId": "cowboys",
+    "titulo": "Descuento en Palcos VIP",
+    "descripcion": "10% de descuento en la reservación de palcos VIP para el día de partido en el espectacular AT&T Stadium.",
+    "codigo": "COWBOYSVIP",
+    "validoHasta": "15 de Noviembre, 2026"
+  },
+  {
+    "equipoId": "cowboys",
+    "titulo": "Merch 2x1 Star Store",
+    "descripcion": "Lleva cualquier producto de la Star Store al 2x1 presentando este código en taquilla. Válido en jornada de partido.",
+    "codigo": "STAR2X1",
+    "validoHasta": "30 de Octubre, 2026"
+  },
+  {
+    "equipoId": "chiefs",
+    "titulo": "Kit Rojo Fan Pack",
+    "descripcion": "Adquiere el Fan Pack oficial de los Chiefs con jersey, gorra y bufanda con un 25% de descuento este temporada.",
+    "codigo": "CHIEFS25",
+    "validoHasta": "15 de Enero, 2027"
+  },
+  {
+    "equipoId": "realmadrid",
+    "titulo": "Tour Bernabéu Premium",
+    "descripcion": "Disfruta de un 15% de descuento para recorrer el remodelado Estadio Santiago Bernabéu y su museo histórico.",
+    "codigo": "HALAMADRID15",
+    "validoHasta": "15 de Octubre, 2026"
+  },
+  {
+    "equipoId": "realmadrid",
+    "titulo": "Pack Familia Bernabéu",
+    "descripcion": "Entrada doble al museo + 2 camisetas oficiales temporada 2026 con un descuento especial de 30%.",
+    "codigo": "FAMILIARM30",
+    "validoHasta": "31 de Agosto, 2026"
+  },
+  {
+    "equipoId": "barcelona",
+    "titulo": "Barça Immersive Tour",
+    "descripcion": "Compra tu entrada digital para el Barça Immersive Tour y obtén una bufanda de regalo mostrando el código en taquilla.",
+    "codigo": "BARCAFANREGALO",
+    "validoHasta": "31 de Diciembre, 2026"
+  },
+  {
+    "equipoId": "chivas",
+    "titulo": "Día de Partido en Akron",
+    "descripcion": "20% de descuento en boletos de tribuna para el próximo partido de local en el Estadio Akron. ¡Viva el Rebaño!",
+    "codigo": "REBANOSAGRDO20",
+    "validoHasta": "30 de Junio, 2026"
+  },
+  {
+    "equipoId": "lakers",
+    "titulo": "Noche Morada y Dorada",
+    "descripcion": "Obtén 2 boletos de cancha al precio de 1 para un partido de temporada regular. Código válido una sola vez por cuenta.",
+    "codigo": "LAKERSGOLD2X1",
+    "validoHasta": "30 de Marzo, 2027"
+  },
+  {
+    "equipoId": "lakers",
+    "titulo": "Crypto Arena Fan Shop",
+    "descripcion": "30% de descuento en toda la línea de playeras y gorras Lakers en la tienda oficial del Crypto.com Arena.",
+    "codigo": "CRYPTOSHOP30",
+    "validoHasta": "28 de Febrero, 2027"
+  },
+  {
+    "equipoId": "bulls",
+    "titulo": "Noche de Campeones Chicago",
+    "descripcion": "Entrada general + poster gigante firmado de Michael Jordan por solo $99 USD en el United Center esta temporada.",
+    "codigo": "BULLSMJ99",
+    "validoHasta": "15 de Abril, 2027"
+  },
+  {
+    "equipoId": "warriors",
+    "titulo": "Chase Center Experience",
+    "descripcion": "Pack VIP con visita a las instalaciones, sesión de tiros libres y foto oficial con trofeos de los Warriors.",
+    "codigo": "WARRIORSVIP",
+    "validoHasta": "31 de Mayo, 2027"
+  },
+  {
+    "equipoId": "warriors",
+    "titulo": "Splash Brothers Jersey",
+    "descripcion": "Adquiere el jersey de Curry o Thompson con un 20% de descuento en la tienda Chase Center usando este código.",
+    "codigo": "SPLASH20OFF",
+    "validoHasta": "30 de Junio, 2027"
+  }
+];
+
+/** Servicio de Equipos — simula una llamada a una API REST */
+class ServicioEquipos {
+    static async obtenerTodos() {
+        let rawData;
+        try {
+            const response = await fetch('equipos.json');
+            if (!response.ok) throw new Error('Error en ServicioEquipos');
+            rawData = await response.json();
+        } catch (e) {
+            console.warn("No se pudo cargar equipos.json vía fetch (probablemente por restricciones del protocolo file://). Cargando respaldo local...", e);
+            rawData = FALLBACK_EQUIPOS;
+        }
+
+        // Mapeo de JSON plano → instancias de nuestras clases
+        return rawData.map(item => {
+            // Argumentos comunes a todas las subclases
+            const base = [
+                item.id, item.nombre, item.pais, item.ciudad, item.historia,
+                item.latitud, item.longitud, item.estadio, item.logo,
+                item.emoji, item.color, item.cualidades, item.defectos
+            ];
+            switch (item.deporte) {
+                case 'NFL':        return new EquipoNFL(       ...base, item.superBowls);
+                case 'Soccer':     return new EquipoSoccer(    ...base, item.copas);
+                case 'Basketball': return new EquipoBasquetbol(...base, item.campeonatosNBA);
+                default:           return new Equipo(...base);
+            }
+        });
+    }
+}
+
+/** Servicio de Promociones — simula una llamada a una API REST */
+class ServicioPromociones {
+    static async obtenerPorEquipoId(equipoId) {
+        let rawData;
+        try {
+            const response = await fetch('promociones.json');
+            if (!response.ok) throw new Error('Error en ServicioPromociones');
+            rawData = await response.json();
+        } catch (e) {
+            console.warn("No se pudo cargar promociones.json vía fetch. Cargando respaldo local...", e);
+            rawData = FALLBACK_PROMOCIONES;
+        }
+        return rawData.filter(p => p.equipoId === equipoId);
+    }
+}
+
+
+// ════════════════════════════════════════════════════════
+//  3. CONTROLADOR PRINCIPAL DE LA APLICACIÓN
+// ════════════════════════════════════════════════════════
+
+class AppController {
+    constructor() {
+        this.map               = null;
+        this.equipos           = [];
+        this.equipoSeleccionado = null;
+        this.userLocation      = null;  // { lat, lng, accuracy, datetime }
+
+        // Capas Leaflet
+        this.userMarker    = null;
+        this.stadiumMarker = null;
+        this.routeLine     = null;
+
+        // Capas y estado de Rutas Guardadas
+        this.savedRoutes = [];
+        this.selectedSavedRouteId = null;
+        this.savedRouteVisible = true;
+        this.savedRouteHighlighted = false;
+        this.savedRouteLine = null;
+        this.savedRouteOriginMarker = null;
+        this.savedRouteDestMarker = null;
+    }
+
+    // ── Inicialización ──────────────────────────────────
+
+    async inicializar() {
+        this.inicializarMapa();
+        await this.cargarEquipos();
+        this.cargarRutasGuardadas();
+    }
+
+    inicializarMapa() {
+        this.map = L.map('map', { zoomControl: false }).setView([20.0, -30.0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(this.map);
+    }
+
+    // ── Carga y Renderizado del Selector ────────────────
+
+    async cargarEquipos() {
+        try {
+            this.equipos = await ServicioEquipos.obtenerTodos();
+            this.renderizarSubmenus();
+        } catch (e) {
+            document.getElementById('teamsContainer').innerHTML = `
+                <div class="alert-banner">⚠️ Error al cargar el servicio de equipos.</div>`;
+        }
+    }
+
+    /**
+     * Agrupa los equipos por deporte y construye los submenús acordeón.
+     */
+    renderizarSubmenus() {
+        // Definición de categorías con su icono y clave de clase
+        const categorias = [
+            { deporte: 'NFL',        label: 'Fútbol Americano', icon: '🏈', cssKey: 'nfl'        },
+            { deporte: 'Soccer',     label: 'Soccer',           icon: '⚽', cssKey: 'soccer'     },
+            { deporte: 'Basketball', label: 'Basquetbol',       icon: '🏀', cssKey: 'basketball' },
+        ];
+
+        const container = document.getElementById('teamsContainer');
+        container.innerHTML = '';
+
+        categorias.forEach((cat, catIdx) => {
+            const equiposCat = this.equipos.filter(eq => {
+                if (cat.deporte === 'NFL')        return eq instanceof EquipoNFL;
+                if (cat.deporte === 'Soccer')     return eq instanceof EquipoSoccer;
+                if (cat.deporte === 'Basketball') return eq instanceof EquipoBasquetbol;
+                return false;
+            });
+            if (equiposCat.length === 0) return;
+
+            const catId      = `cat-${cat.cssKey}`;
+            const listId     = `list-${cat.cssKey}`;
+
+            // Wrapper de la categoría
+            const wrapper = document.createElement('div');
+            wrapper.className = `sport-category sport-${cat.cssKey}`;
+
+            // Botón de encabezado (acordeón)
+            const header = document.createElement('button');
+            header.className = 'sport-category-header';
+            header.id = catId;
+            header.setAttribute('aria-expanded', 'false');
+            header.innerHTML = `
+                <span class="sport-icon">${cat.icon}</span>
+                <span class="sport-label">${cat.label}</span>
+                <span class="sport-count">${equiposCat.length} equipo${equiposCat.length > 1 ? 's' : ''}</span>
+                <span class="chevron">▼</span>
+            `;
+            header.addEventListener('click', () => this.toggleCategoria(catId, listId));
+
+            // Lista colapsable
+            const list = document.createElement('div');
+            list.className = 'sport-teams-list';
+            list.id = listId;
+
+            const inner = document.createElement('div');
+            inner.className = 'sport-teams-list-inner';
+
+            equiposCat.forEach(eq => {
+                const card = document.createElement('div');
+                card.className = 'team-card';
+                card.setAttribute('data-id', eq.nombre);
+                card.style.setProperty('--accent-color', eq.color);
+                card.onclick = () => this.seleccionarEquipo(eq, card);
+                card.innerHTML = `
+                    <div class="team-card-emoji">${eq.emoji}</div>
+                    <div class="team-card-info">
+                        <h4 class="team-card-name">${eq.nombre}</h4>
+                        <p class="team-card-city">${eq.ciudad} &bull; 🏟️ ${eq.estadio}</p>
+                    </div>
+                `;
+                inner.appendChild(card);
+            });
+
+            list.appendChild(inner);
+            wrapper.appendChild(header);
+            wrapper.appendChild(list);
+            container.appendChild(wrapper);
+        });
+    }
+
+    /** Abre/cierra el acordeón de una categoría deportiva */
+    toggleCategoria(headerId, listId) {
+        const header = document.getElementById(headerId);
+        const list   = document.getElementById(listId);
+        const isOpen = list.classList.contains('open');
+
+        // Cierra todos los demás antes de abrir este
+        document.querySelectorAll('.sport-teams-list.open').forEach(el => {
+            el.classList.remove('open');
+        });
+        document.querySelectorAll('.sport-category-header.open').forEach(el => {
+            el.classList.remove('open');
+            el.setAttribute('aria-expanded', 'false');
+        });
+
+        if (!isOpen) {
+            list.classList.add('open');
+            header.classList.add('open');
+            header.setAttribute('aria-expanded', 'true');
+        }
+    }
+
+    // ── Selección de Equipo ─────────────────────────────
+
+    async seleccionarEquipo(equipo, cardElement) {
+        this.equipoSeleccionado = equipo;
+
+        // Marcar la tarjeta seleccionada
+        document.querySelectorAll('.team-card').forEach(c => c.classList.remove('selected'));
+        if (cardElement) cardElement.classList.add('selected');
+
+        // Mostrar secciones ocultas
+        document.getElementById('detailSection').style.display = 'block';
+        document.getElementById('promosSection').style.display = 'block';
+        document.getElementById('shareSection').style.display  = 'block';
+
+        // Badge y estilos según tipo de deporte
+        let badgeClass = 'badge-nfl', badgeName = 'NFL';
+        if (equipo instanceof EquipoSoccer)     { badgeClass = 'badge-soccer';     badgeName = 'Soccer'; }
+        if (equipo instanceof EquipoBasquetbol) { badgeClass = 'badge-basketball'; badgeName = 'Basquetbol'; }
+
+        // Construir listas de cualidades y defectos
+        const cualidadesHTML = (equipo.cualidades || []).map(q =>
+            `<li class="detail-list-item detail-cualidad"><span class="list-dot">✅</span>${q}</li>`
+        ).join('');
+        const defectosHTML = (equipo.defectos || []).map(d =>
+            `<li class="detail-list-item detail-defecto"><span class="list-dot">⚠️</span>${d}</li>`
+        ).join('');
+
+        const box = document.getElementById('teamDetailsBox');
+        box.style.setProperty('--accent-color', equipo.color);
+        box.innerHTML = `
+            <!-- Logo + Nombre + Badge -->
+            <div class="detail-hero">
+                <div class="detail-logo-wrap">
+                    <img class="detail-logo"
+                         src="${equipo.logo}"
+                         alt="Logo ${equipo.nombre}"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                    <div class="detail-logo-fallback" style="display:none;">${equipo.emoji}</div>
+                </div>
+                <div class="detail-hero-info">
+                    <div class="detail-field-label">Nombre del Club</div>
+                    <h4 class="detail-club-name">${equipo.nombre}</h4>
+                    <span class="sport-badge ${badgeClass}">${badgeName}</span>
+                </div>
+            </div>
+
+            <!-- Estadio -->
+            <div class="detail-field">
+                <span class="detail-field-label">🏟️ Nombre del Estadio</span>
+                <span class="detail-field-value">${equipo.estadio}</span>
+            </div>
+
+            <!-- País y Ciudad -->
+            <div class="detail-field">
+                <span class="detail-field-label">🌍 País y Ciudad</span>
+                <span class="detail-field-value">${equipo.pais} &mdash; ${equipo.ciudad}</span>
+            </div>
+
+            <!-- Logros -->
+            <div class="detail-stat">${equipo.obtenerLogrosHTML()}</div>
+
+            <!-- Cualidades -->
+            <div class="detail-field-label" style="margin-top:14px;margin-bottom:6px;">💪 Cualidades del Club</div>
+            <ul class="detail-list">${cualidadesHTML || '<li class="detail-list-item">Sin datos</li>'}</ul>
+
+            <!-- Defectos -->
+            <div class="detail-field-label" style="margin-top:12px;margin-bottom:6px;">📉 Defectos del Club</div>
+            <ul class="detail-list">${defectosHTML || '<li class="detail-list-item">Sin datos</li>'}</ul>
+
+            <!-- Botón Guardar Ruta -->
+            <button class="btn-guardar-ruta" onclick="app.guardarRuta()">
+                💾 Guardar Ruta al Estadio
+            </button>
+        `;
+
+        await this.cargarPromociones(equipo.id || equipo.nombre.toLowerCase().replace(/[^a-z]/g,''), equipo.color);
+        this.actualizarMarcadorEstadio(equipo);
+
+        if (this.userLocation) {
+            this.generarRutaYDistancia();
+        } else {
+            this.map.setView([equipo.latitud, equipo.longitud], 13);
+        }
+    }
+
+    // ── Marcador del Estadio ────────────────────────────
+
+    actualizarMarcadorEstadio(equipo) {
+        if (this.stadiumMarker) this.map.removeLayer(this.stadiumMarker);
+
+        const icon = L.divIcon({
+            html: `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40"
+                     width="40" height="50"
+                     style="filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));">
+                  <path d="M16 0C9.37 0 4 5.37 4 12c0 9 12 28 12 28S28 21 28 12C28 5.37 22.63 0 16 0z"
+                        fill="${equipo.color}" stroke="#fff" stroke-width="2"/>
+                  <text x="16" y="16" font-size="13" text-anchor="middle"
+                        fill="#fff" font-family="sans-serif">${equipo.emoji}</text>
+                </svg>`,
+            className: '',
+            iconSize:   [40, 50],
+            iconAnchor: [20, 50],
+            popupAnchor:[0, -50]
+        });
+
+        this.stadiumMarker = L.marker([equipo.latitud, equipo.longitud], { icon }).addTo(this.map);
+        this.stadiumMarker.bindPopup(`
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:2px;">
+                <strong style="font-size:14px;">${equipo.estadio}</strong><br>
+                <span style="font-size:12px;color:#94a3b8;">${equipo.nombre}</span><br>
+                <span style="font-size:11px;color:#fbbf24;">📍 ${equipo.latitud.toFixed(4)}, ${equipo.longitud.toFixed(4)}</span>
+            </div>`).openPopup();
+    }
+
+    // ── Promociones ─────────────────────────────────────
+
+    async cargarPromociones(equipoId, color) {
+        const container = document.getElementById('promosContainer');
+        container.innerHTML = `<p style="color:var(--text-muted);font-size:12px;">Consultando ofertas activas...</p>`;
+
+        const promos = await ServicioPromociones.obtenerPorEquipoId(equipoId);
+        if (!promos.length) {
+            container.innerHTML = `<p style="color:var(--text-muted);font-size:12px;font-style:italic;">Sin promociones activas por el momento.</p>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        promos.forEach(p => {
+            const ticket = document.createElement('div');
+            ticket.className = 'promo-ticket';
+            ticket.style.setProperty('--accent-color', color);
+            ticket.innerHTML = `
+                <h5 class="promo-ticket-title">${p.titulo}</h5>
+                <p class="promo-ticket-desc">${p.descripcion}</p>
+                <div class="promo-ticket-footer">
+                    <span class="promo-code"
+                          onclick="app.copiarAlPortapapeles('${p.codigo}')"
+                          title="Clic para copiar código">
+                        ${p.codigo}
+                    </span>
+                    <span class="promo-expiry">Vence: ${p.validoHasta}</span>
+                </div>`;
+            container.appendChild(ticket);
+        });
+    }
+
+    // ── Geolocalización ─────────────────────────────────
+
+    obtenerUbicacionUsuario() {
+        const banner = document.getElementById('gpsStatusBanner');
+        banner.innerHTML = `<div class="alert-banner info">🛰️ Conectando con satélites GPS...</div>`;
+
+        if (!navigator.geolocation) {
+            banner.innerHTML = `<div class="alert-banner">⚠️ Tu navegador no soporta geolocalización.</div>`;
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            pos  => this.procesarUbicacionExito(pos),
+            err  => this.procesarUbicacionError(err),
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+    }
+
+    procesarUbicacionExito(pos) {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        const datetime = new Date(pos.timestamp).toLocaleString();
+        this.userLocation = { lat, lng, accuracy, datetime };
+
+        document.getElementById('valLat').innerText  = lat.toFixed(6);
+        document.getElementById('valLng').innerText  = lng.toFixed(6);
+        document.getElementById('valAcc').innerText  = `${accuracy.toFixed(1)} m`;
+        document.getElementById('valTime').innerText = datetime;
+
+        document.getElementById('gpsStatusBanner').innerHTML =
+            `<div class="alert-banner success">✅ Ubicación obtenida con éxito.</div>`;
+
+        this.actualizarMarcadorUsuario(lat, lng);
+        if (this.equipoSeleccionado) this.generarRutaYDistancia();
+        else this.map.setView([lat, lng], 14);
+    }
+
+    procesarUbicacionError(err) {
+        const msgs = {
+            [err.PERMISSION_DENIED]: 'Permiso denegado. Habilita la geolocalización en tu navegador.',
+            [err.POSITION_UNAVAILABLE]: 'Señal GPS no disponible en este momento.',
+            [err.TIMEOUT]: 'Tiempo de espera agotado al buscar tu ubicación.',
+        };
+        document.getElementById('gpsStatusBanner').innerHTML =
+            `<div class="alert-banner">⚠️ ${msgs[err.code] || 'Error desconocido.'}</div>`;
+    }
+
+    actualizarMarcadorUsuario(lat, lng) {
+        if (this.userMarker) this.map.removeLayer(this.userMarker);
+
+        const icon = L.divIcon({
+            html: `<div style="
+                        width:18px;height:18px;
+                        background:#3b82f6;border:3px solid #fff;
+                        border-radius:50%;
+                        box-shadow:0 0 0 0 rgba(59,130,246,.7);
+                        animation:gps-pulse 2s infinite;">
+                   </div>
+                   <style>
+                     @keyframes gps-pulse {
+                       0%   { box-shadow:0 0 0 0   rgba(59,130,246,.7); }
+                       70%  { box-shadow:0 0 0 12px rgba(59,130,246,0); }
+                       100% { box-shadow:0 0 0 0   rgba(59,130,246,0); }
+                     }
+                   </style>`,
+            className: '',
+            iconSize:   [18,18],
+            iconAnchor: [9,9]
+        });
+
+        this.userMarker = L.marker([lat, lng], { icon }).addTo(this.map);
+        this.userMarker.bindPopup(`
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;">
+                <strong>Mi Ubicación Actual</strong><br>
+                <span style="font-size:11px;color:#94a3b8;">${this.userLocation.datetime}</span>
+            </div>`);
+    }
+
+    // ── Ruta y Distancia (Haversine) ────────────────────
+
+    generarRutaYDistancia() {
+        if (!this.userLocation || !this.equipoSeleccionado) return;
+
+        const { lat: uLat, lng: uLng } = this.userLocation;
+        const sLat = this.equipoSeleccionado.latitud;
+        const sLng = this.equipoSeleccionado.longitud;
+
+        // Trazar polilínea
+        if (this.routeLine) this.map.removeLayer(this.routeLine);
+        this.routeLine = L.polyline([[uLat, uLng],[sLat, sLng]], {
+            color:     this.equipoSeleccionado.color,
+            weight:    4, opacity: 0.85, dashArray: '8 8'
+        }).addTo(this.map);
+
+        this.map.fitBounds(L.latLngBounds([[uLat, uLng],[sLat, sLng]]), { padding:[50,50] });
+
+        // Distancia con Haversine
+        const distKm = this.calcularHaversine(uLat, uLng, sLat, sLng);
+
+        // Tiempo estimado a 60 km/h
+        const hrs  = distKm / 60;
+        let timeStr;
+        if (hrs < 1) {
+            timeStr = `Aprox. ${Math.round(hrs * 60)} min`;
+        } else {
+            const h = Math.floor(hrs);
+            const m = Math.round((hrs - h) * 60);
+            timeStr = `Aprox. ${h} h ${m} min`;
+        }
+
+        document.getElementById('lblTargetStadium').innerText = this.equipoSeleccionado.estadio;
+        document.getElementById('lblDistanceText').innerText  = `${distKm.toFixed(2)} km`;
+        document.getElementById('lblTimeText').innerText      = timeStr;
+        document.getElementById('routeOverlay').style.display = 'block';
+    }
+
+    /** Fórmula de Haversine — distancia geodésica en km */
+    calcularHaversine(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const toRad = d => d * Math.PI / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat/2)**2 +
+                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    // ── Compartir en Redes ──────────────────────────────
+
+    toggleShareMenu() {
+        document.getElementById('shareMenu').classList.toggle('open');
+    }
+
+    compartirRed(red) {
+        if (!this.equipoSeleccionado) { alert('Selecciona un equipo primero.'); return; }
+
+        const eq      = this.equipoSeleccionado;
+        const mapLink = `https://www.google.com/maps?q=${eq.latitud},${eq.longitud}`;
+        const texto   = `📍 Estadio: ${eq.estadio} (${eq.nombre} — ${eq.ciudad}). Ver en Google Maps: ${mapLink}`;
+
+        switch (red) {
+            case 'facebook':
+                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(mapLink)}`, '_blank');
+                break;
+            case 'whatsapp':
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
+                break;
+            case 'instagram':
+                this.copiarTexto(texto, '¡Datos del estadio copiados! Abriendo Instagram...');
+                window.open('https://www.instagram.com', '_blank');
+                break;
+        }
+    }
+
+    copiarAlPortapapeles(codigo) {
+        this.copiarTexto(codigo, `Código "${codigo}" copiado al portapapeles ✅`);
+    }
+
+    copiarTexto(texto, msg) {
+        navigator.clipboard.writeText(texto)
+            .then(() => alert(msg))
+            .catch(() => alert(`No se pudo copiar.\n\nContenido:\n${texto}`));
+    }
+
+    // ── Controles del Mapa ──────────────────────────────
+    zoomIn()  { this.map?.zoomIn();  }
+    zoomOut() { this.map?.zoomOut(); }
+
+    // ── Rutas Guardadas ─────────────────────────────────
+
+    cargarRutasGuardadas() {
+        this.savedRoutes = JSON.parse(localStorage.getItem('saved_routes')) || [];
+        this.renderizarRutasGuardadas();
+    }
+
+    renderizarRutasGuardadas() {
+        const select = document.getElementById('selectSavedRoutes');
+        if (!select) return;
+
+        const prevValue = this.selectedSavedRouteId;
+
+        select.innerHTML = '<option value="">-- Selecciona una ruta guardada --</option>';
+        this.savedRoutes.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.id;
+            opt.textContent = r.name;
+            select.appendChild(opt);
+        });
+
+        if (prevValue && this.savedRoutes.some(r => r.id === prevValue)) {
+            select.value = prevValue;
+        } else {
+            this.selectedSavedRouteId = null;
+            select.value = "";
+            this.limpiarCapaRutaGuardada();
+        }
+        
+        this.actualizarUIControlesRuta();
+    }
+
+    guardarRuta() {
+        if (!this.userLocation) {
+            alert("Por favor, obtén tu ubicación GPS primero usando 'Obtener mi ubicación'.");
+            return;
+        }
+        if (!this.equipoSeleccionado) {
+            alert("Por favor, selecciona un club/estadio primero.");
+            return;
+        }
+
+        const eq = this.equipoSeleccionado;
+        const uLat = this.userLocation.lat;
+        const uLng = this.userLocation.lng;
+        const sLat = eq.latitud;
+        const sLng = eq.longitud;
+
+        const routeId = 'route_' + Date.now();
+        const routeName = `Ruta a ${eq.estadio} (${eq.emoji} ${eq.nombre}) - ${new Date().toLocaleDateString()}`;
+
+        const distKm = this.calcularHaversine(uLat, uLng, sLat, sLng);
+        const hrs = distKm / 60;
+        let timeStr = hrs < 1 ? `${Math.round(hrs * 60)} min` : `${Math.floor(hrs)} h ${Math.round((hrs - Math.floor(hrs)) * 60)} min`;
+
+        const newRoute = {
+            id: routeId,
+            name: routeName,
+            origin: { lat: uLat, lng: uLng },
+            dest: { lat: sLat, lng: sLng },
+            estadio: eq.estadio,
+            equipo: eq.nombre,
+            emoji: eq.emoji,
+            color: eq.color,
+            distKm: distKm,
+            timeStr: timeStr
+        };
+
+        this.savedRoutes.push(newRoute);
+        localStorage.setItem('saved_routes', JSON.stringify(this.savedRoutes));
+
+        this.renderizarRutasGuardadas();
+        
+        this.selectedSavedRouteId = routeId;
+        const select = document.getElementById('selectSavedRoutes');
+        if (select) select.value = routeId;
+        
+        this.mostrarRutaGuardada(newRoute);
+        
+        const status = document.getElementById('savedRoutesStatus');
+        if (status) {
+            status.innerHTML = `<div class="alert-banner success">💾 Ruta guardada con éxito.</div>`;
+            setTimeout(() => {
+                if (status.querySelector('.success')) {
+                    status.innerHTML = '';
+                }
+            }, 3000);
+        }
+    }
+
+    seleccionarRutaGuardada(routeId) {
+        this.selectedSavedRouteId = routeId;
+        if (!routeId) {
+            this.limpiarCapaRutaGuardada();
+            this.actualizarUIControlesRuta();
+            return;
+        }
+
+        const route = this.savedRoutes.find(r => r.id === routeId);
+        if (!route) return;
+
+        this.mostrarRutaGuardada(route);
+        this.actualizarUIControlesRuta();
+    }
+
+    mostrarRutaGuardada(route) {
+        this.limpiarCapaRutaGuardada();
+
+        if (!this.savedRouteVisible) return;
+
+        // Color: red (#ef4444) if highlighted, blue (#3b82f6) if normal
+        const color = this.savedRouteHighlighted ? '#ef4444' : '#3b82f6';
+
+        this.savedRouteLine = L.polyline([[route.origin.lat, route.origin.lng], [route.dest.lat, route.dest.lng]], {
+            color: color,
+            weight: 5,
+            opacity: 0.9,
+            dashArray: '10 10'
+        }).addTo(this.map);
+
+        const originIcon = L.divIcon({
+            html: `<div style="
+                        width:16px;height:16px;
+                        background:${color};border:2px solid #fff;
+                        border-radius:50%;
+                        box-shadow:0 2px 5px rgba(0,0,0,.4);">
+                   </div>`,
+            className: '',
+            iconSize:   [16,16],
+            iconAnchor: [8,8]
+        });
+        this.savedRouteOriginMarker = L.marker([route.origin.lat, route.origin.lng], { icon: originIcon }).addTo(this.map);
+        this.savedRouteOriginMarker.bindPopup(`
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;">
+                <strong>Origen de Ruta Guardada</strong><br>
+                <span style="color:#94a3b8;">Estadio de destino: ${route.estadio}</span>
+            </div>`);
+
+        const destIcon = L.divIcon({
+            html: `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40"
+                     width="32" height="40"
+                     style="filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));">
+                  <path d="M16 0C9.37 0 4 5.37 4 12c0 9 12 28 12 28S28 21 28 12C28 5.37 22.63 0 16 0z"
+                        fill="${color}" stroke="#fff" stroke-width="1.5"/>
+                  <text x="16" y="14" font-size="10" text-anchor="middle"
+                        fill="#fff" font-family="sans-serif">${route.emoji || '🏟️'}</text>
+                </svg>`,
+            className: '',
+            iconSize:   [32, 40],
+            iconAnchor: [16, 40],
+            popupAnchor:[0, -40]
+        });
+        this.savedRouteDestMarker = L.marker([route.dest.lat, route.dest.lng], { icon: destIcon }).addTo(this.map);
+        this.savedRouteDestMarker.bindPopup(`
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;">
+                <strong>Destino: ${route.estadio}</strong><br>
+                <span style="color:#94a3b8;">${route.equipo}</span>
+            </div>`);
+
+        this.map.fitBounds(L.latLngBounds([[route.origin.lat, route.origin.lng], [route.dest.lat, route.dest.lng]]), { padding: [60, 60] });
+
+        const status = document.getElementById('savedRoutesStatus');
+        if (status) {
+            status.innerHTML = `
+                <div class="alert-banner info" style="display: block; font-size: 12px; line-height: 1.5; border-color: ${color};">
+                    <div style="font-weight: 700; color: ${color}; transition: color 0.3s;">Ruta: ${route.estadio}</div>
+                    <div>Distancia: <strong>${route.distKm.toFixed(2)} km</strong></div>
+                    <div>Tiempo: <strong>${route.timeStr}</strong></div>
+                </div>`;
+        }
+    }
+
+    toggleMostrarRuta() {
+        if (!this.selectedSavedRouteId) {
+            alert("Por favor, selecciona una ruta guardada primero.");
+            return;
+        }
+
+        this.savedRouteVisible = !this.savedRouteVisible;
+        
+        const route = this.savedRoutes.find(r => r.id === this.selectedSavedRouteId);
+        if (route) {
+            if (this.savedRouteVisible) {
+                this.mostrarRutaGuardada(route);
+            } else {
+                this.limpiarCapaRutaGuardada();
+                const status = document.getElementById('savedRoutesStatus');
+                if (status) {
+                    status.innerHTML = `
+                        <div class="alert-banner info" style="display: block; font-size: 12px; line-height: 1.5; opacity: 0.7;">
+                            <div>Ruta a ${route.estadio} (Oculta)</div>
+                        </div>`;
+                }
+            }
+        }
+        this.actualizarUIControlesRuta();
+    }
+
+    toggleResaltadoRuta(checked) {
+        this.savedRouteHighlighted = checked;
+        if (this.selectedSavedRouteId) {
+            const route = this.savedRoutes.find(r => r.id === this.selectedSavedRouteId);
+            if (route && this.savedRouteVisible) {
+                this.mostrarRutaGuardada(route);
+            }
+        }
+    }
+
+    eliminarRutaGuardada() {
+        if (!this.selectedSavedRouteId) {
+            alert("Por favor, selecciona una ruta guardada primero.");
+            return;
+        }
+
+        if (confirm("¿Estás seguro de que deseas eliminar esta ruta guardada?")) {
+            this.savedRoutes = this.savedRoutes.filter(r => r.id !== this.selectedSavedRouteId);
+            localStorage.setItem('saved_routes', JSON.stringify(this.savedRoutes));
+            this.selectedSavedRouteId = null;
+            this.renderizarRutasGuardadas();
+            
+            const status = document.getElementById('savedRoutesStatus');
+            if (status) {
+                status.innerHTML = `<div class="alert-banner info">Ruta eliminada.</div>`;
+                setTimeout(() => { status.innerHTML = ''; }, 2000);
+            }
+        }
+    }
+
+    limpiarCapaRutaGuardada() {
+        if (this.savedRouteLine) {
+            this.map.removeLayer(this.savedRouteLine);
+            this.savedRouteLine = null;
+        }
+        if (this.savedRouteOriginMarker) {
+            this.map.removeLayer(this.savedRouteOriginMarker);
+            this.savedRouteOriginMarker = null;
+        }
+        if (this.savedRouteDestMarker) {
+            this.map.removeLayer(this.savedRouteDestMarker);
+            this.savedRouteDestMarker = null;
+        }
+        const status = document.getElementById('savedRoutesStatus');
+        if (status) status.innerHTML = '';
+    }
+
+    actualizarUIControlesRuta() {
+        const btnToggle = document.getElementById('btnToggleSavedRoute');
+        const iconToggle = document.getElementById('iconToggleSavedRoute');
+        const textToggle = document.getElementById('textToggleSavedRoute');
+        const chkHighlight = document.getElementById('chkHighlightRed');
+        const btnDelete = document.getElementById('btnDeleteSavedRoute');
+
+        if (!this.selectedSavedRouteId) {
+            if (btnToggle) btnToggle.disabled = true;
+            if (chkHighlight) chkHighlight.disabled = true;
+            if (btnDelete) btnDelete.disabled = true;
+            if (textToggle) textToggle.textContent = "Mostrar/Ocultar";
+            return;
+        }
+
+        if (btnToggle) btnToggle.disabled = false;
+        if (chkHighlight) chkHighlight.disabled = false;
+        if (btnDelete) btnDelete.disabled = false;
+
+        if (chkHighlight) {
+            chkHighlight.checked = this.savedRouteHighlighted;
+        }
+
+        if (this.savedRouteVisible) {
+            if (iconToggle) iconToggle.textContent = "👁️‍🗨️";
+            if (textToggle) textToggle.textContent = "Ocultar Ruta";
+        } else {
+            if (iconToggle) iconToggle.textContent = "👁️";
+            if (textToggle) textToggle.textContent = "Mostrar Ruta";
+        }
+    }
+}
+
+// ════════════════════════════════════════════════════════
+//  ARRANQUE
+// ════════════════════════════════════════════════════════
+const app = new AppController();
+window.addEventListener('DOMContentLoaded', () => app.inicializar());
+</script>
+</body>
+</html>

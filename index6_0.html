@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¿On toy? - Geolocalización y Redes Sociales</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 300px;
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 24px 16px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 16px;
+            text-align: left;
+        }
+
+        .sidebar-header h2 {
+            margin: 0 0 4px 0;
+            font-size: 22px;
+            color: #f8fafc;
+            font-weight: 700;
+        }
+
+        .sidebar-header p {
+            margin: 0;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: left;
+        }
+
+        .sidebar-section h3 {
+            margin: 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            font-weight: 700;
+            padding-left: 8px;
+        }
+
+        .sidebar-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-btn, .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            color: #cbd5e1;
+            background-color: transparent;
+            transition: all 0.2s ease-in-out;
+            box-sizing: border-box;
+            text-align: left;
+            margin: 0;
+        }
+
+        .sidebar-btn span, .sidebar-link svg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-btn:hover, .sidebar-link:hover {
+            background-color: #1e293b;
+            color: #ffffff;
+            transform: translateX(4px);
+        }
+
+        .btn-gps:hover {
+            background-color: rgba(56, 189, 248, 0.1) !important;
+            color: #38bdf8 !important;
+        }
+        .btn-zoom:hover {
+            background-color: rgba(148, 163, 184, 0.1) !important;
+            color: #cbd5e1 !important;
+        }
+        .btn-nueva:hover {
+            background-color: #6f42c1 !important;
+            color: #ffffff !important;
+        }
+        .btn-generar:hover {
+            background-color: #28a745 !important;
+            color: #ffffff !important;
+        }
+        .btn-cancelar:hover {
+            background-color: #dc3545 !important;
+            color: #ffffff !important;
+        }
+        .btn-eliminar:hover {
+            background-color: #ff8800 !important;
+            color: #ffffff !important;
+        }
+
+        .link-fb:hover {
+            background-color: #1877F2 !important;
+            color: #ffffff !important;
+        }
+        .link-ig:hover {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+            color: #ffffff !important;
+        }
+        .link-wa:hover {
+            background-color: #25D366 !important;
+            color: #ffffff !important;
+        }
+        .btn-wa-share:hover {
+            background-color: #075E54 !important;
+            color: #ffffff !important;
+        }
+
+        .red-logo {
+            width: 18px;
+            height: 18px;
+            vertical-align: middle;
+            fill: currentColor;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 30px;
+            box-sizing: border-box;
+            max-width: 100%;
+            width: calc(100% - 300px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .main-content h1 {
+            margin-top: 0;
+            color: #0f172a;
+        }
+
+        .main-content h2 {
+            margin-top: 5px;
+            color: #475569;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            max-width: 1000px;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .info {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: left;
+            display: block;
+            width: 100%;
+            max-width: 1000px;
+            box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eaeaea;
+        }
+
+        #tablaRuta,
+        #tablaTramos {
+            width: 100%;
+            max-width: 1000px;
+            margin: 25px auto;
+            border-collapse: collapse;
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            border: none;
+        }
+
+        #tablaRuta th,
+        #tablaTramos th {
+            background-color: #343a40;
+            color: #ffffff;
+            padding: 14px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: left;
+            border: none;
+        }
+
+        #tablaRuta td,
+        #tablaTramos td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #eff2f5;
+            color: #495057;
+            font-size: 14px;
+            text-align: left;
+            border-top: none;
+            border-right: none;
+            border-left: none;
+        }
+
+        #tablaRuta tr:last-child td,
+        #tablaTramos tr:last-child td {
+            border-bottom: none;
+        }
+
+        #tablaRuta tr:hover,
+        #tablaTramos tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .vacio-mensaje {
+            text-align: center !important;
+            color: #6c757d !important;
+            font-style: italic;
+        }
+
+        .resumen-container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 25px auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            text-align: left;
+            font-weight: 600;
+            font-size: 15px;
+            color: #212529;
+            box-sizing: border-box;
+            border-left: 6px solid #6f42c1;
+            transition: all 0.3s ease;
+            border-top: 1px solid #eaeaea;
+            border-right: 1px solid #eaeaea;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .resumen-item {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .resumen-icon {
+            font-size: 20px;
+            margin-right: 12px;
+        }
+
+        .share-submenu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding-left: 20px;
+        }
+
+        .share-submenu.mostrar-submenu {
+            max-height: 150px;
+            opacity: 1;
+            margin-top: 6px;
+            margin-bottom: 6px;
+        }
+
+        .submenu-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            color: #94a3b8;
+            background-color: transparent;
+            transition: all 0.2s ease-in-out;
+            box-sizing: border-box;
+            text-align: left;
+            margin: 0;
+        }
+
+        .submenu-btn span {
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .submenu-btn:hover {
+            color: #ffffff;
+            background-color: #1e293b;
+            transform: translateX(4px);
+        }
+
+        .btn-share-fb:hover {
+            background-color: rgba(24, 119, 242, 0.15) !important;
+            color: #1877F2 !important;
+        }
+        .btn-share-ig:hover {
+            background-color: rgba(225, 48, 108, 0.15) !important;
+            color: #e1306c !important;
+        }
+        .btn-share-wa:hover {
+            background-color: rgba(37, 211, 102, 0.15) !important;
+            color: #25d366 !important;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            }
+            .main-content {
+                width: 100%;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Barra Lateral -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>📍 ¿On toy?</h2>
+                <p>Geolocalización & Redes</p>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>🗺️ Mapa y Controles</h3>
+                <ul class="sidebar-list">
+                    <li><button onclick="obtenerUbicacion()" class="sidebar-btn btn-gps"><span>📍</span> Obtener mi ubicación</button></li>
+                    <li><button onclick="zoomIn()" class="sidebar-btn btn-zoom"><span>🔍</span> Acercar mapa</button></li>
+                    <li><button onclick="zoomOut()" class="sidebar-btn btn-zoom"><span>🔍</span> Alejar mapa</button></li>
+                    <li><button onclick="nuevaRuta()" class="sidebar-btn btn-nueva"><span>🚀</span> Nueva Ruta</button></li>
+                    <li><button onclick="generarRuta()" class="sidebar-btn btn-generar"><span>✏️</span> Generar Ruta</button></li>
+                    <li><button onclick="cancelarRuta()" class="sidebar-btn btn-cancelar"><span>❌</span> Cancelar Ruta</button></li>
+                    <li><button onclick="eliminarTodasLasRutas()" class="sidebar-btn btn-eliminar"><span>🗑️</span> Eliminar rutas</button></li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>🌐 Redes Sociales</h3>
+                <ul class="sidebar-list">
+                    <li>
+                        <a href="https://www.facebook.com" target="_blank" class="sidebar-link link-fb">
+                            <svg class="red-logo" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                            Facebook
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.instagram.com" target="_blank" class="sidebar-link link-ig">
+                            <svg class="red-logo" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                            Instagram
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://web.whatsapp.com" target="_blank" class="sidebar-link link-wa">
+                            <svg class="red-logo" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.863-9.736.001-2.599-1.01-5.043-2.848-6.883-1.838-1.84-4.286-2.85-6.887-2.85-5.443 0-9.87 4.371-9.872 9.741-.001 1.902.502 3.753 1.456 5.367L1.991 21.95l6.009-1.576c-.524.32-.239.146-.653-.78zm11.303-3.093c-.305-.153-1.805-.89-2.083-.99-.279-.101-.482-.153-.684.153-.202.306-.783.99-.959 1.193-.177.203-.354.228-.659.076-.305-.153-1.288-.475-2.456-1.517-.908-.81-1.52-1.812-1.698-2.118-.178-.306-.019-.471.134-.622.137-.137.305-.355.457-.533.153-.178.203-.305.305-.508.102-.203.051-.381-.025-.533-.076-.153-.684-1.65-.938-2.26-.247-.595-.499-.513-.684-.522-.178-.009-.381-.01-.583-.01-.203 0-.533.076-.813.381-.28.305-1.066 1.042-1.066 2.54 0 1.498 1.091 2.946 1.243 3.149.153.203 2.148 3.28 5.204 4.602.727.314 1.294.502 1.737.643.73.232 1.396.199 1.922.121.587-.087 1.805-.737 2.058-1.45.253-.713.253-1.32.177-1.45-.076-.127-.279-.203-.584-.356z"/></svg>
+                            WhatsApp Web
+                        </a>
+                    </li>
+                    <li>
+                        <button onclick="toggleShareSubmenu()" class="sidebar-btn btn-wa-share" id="btnCompartir">
+                            <span>📲</span> Compartir ubicación
+                        </button>
+                        <ul class="share-submenu" id="shareSubmenu">
+                            <li>
+                                <button onclick="compartirUbicacionFacebook()" class="submenu-btn btn-share-fb">
+                                    <span>🌐</span> Facebook
+                                </button>
+                            </li>
+                            <li>
+                                <button onclick="compartirUbicacionInstagram()" class="submenu-btn btn-share-ig">
+                                    <span>📸</span> Instagram
+                                </button>
+                            </li>
+                            <li>
+                                <button onclick="compartirUbicacionWhatsApp()" class="submenu-btn btn-share-wa">
+                                    <span>💬</span> WhatsApp
+                                </button>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Contenido Principal -->
+        <main class="main-content">
+            <h1>Práctica de Geolocalización</h1>
+            <h2>¿On toy?</h2>
+
+            <!-- Información de ubicación -->
+            <div class="info">
+                <p><strong>Latitud:</strong> <span id="latitud">---</span></p>
+                <p><strong>Longitud:</strong> <span id="longitud">---</span></p>
+                <p><strong>Precisión:</strong> <span id="precision">---</span> metros</p>
+                <p><strong>Fecha y hora:</strong> <span id="fechahora">---</span></p>
+            </div>
+
+            <h3>Marcadores de la ruta actual</h3>
+            <table id="tablaRuta">
+                <thead>
+                    <tr>
+                        <th>Lugar</th>
+                        <th>Latitud</th>
+                        <th>Longitud</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla">
+                    <tr>
+                        <td colspan="3" class="vacio-mensaje">Aún no hay marcadores en esta ruta. Haz clic en "Nueva Ruta" para iniciar.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>📏 Distancias y tiempos por tramo</h3>
+            <table id="tablaTramos">
+                <thead>
+                    <tr>
+                        <th>Tramo</th>
+                        <th>Distancia (km)</th>
+                        <th>Tiempo Estimado (a 60 km/h)</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTablaTramos">
+                    <tr>
+                        <td colspan="3" class="vacio-mensaje">Agrega al menos 2 marcadores en tu ruta actual para ver los tramos.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div id="resumenRuta" class="resumen-container" style="display: none;"></div>
+
+            <div id="map"></div>
+        </main>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Inicializar mapa con una vista por defecto (Ciudad de México)
+        let map = L.map('map').setView([19.4326, -99.1332], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Escuchar clics en el mapa para añadir marcadores a la ruta actual
+        map.on('click', function (e) {
+            if (rutaActualId !== null) {
+                agregarMarcadorARutaActual(e.latlng.lat, e.latlng.lng);
+            } else {
+                alert("Primero crea una nueva ruta (botón 'Nueva Ruta')");
+            }
+        });
+
+        let rutaPolyline; // Variable para almacenar la ruta (polilínea)
+
+        // Marcador inicial (por defecto)
+        let marcador = L.marker([19.4326, -99.1332]).addTo(map);
+        marcador.bindPopup("Ubicación actual").openPopup();
+
+        // Variable para controlar el watch (opcional, para detenerlo luego)
+        let watchID = null;
+        // === TRES MARCADORES FIJOS ADICIONALES PARA SIMULAR RUTA ===
+        // 1. Tepeapulco, Hidalgo
+        let marcadorTepeapulco = L.marker([19.7895, -98.5523]).addTo(map);
+        marcadorTepeapulco.bindPopup("<b>Tepeapulco</b><br>Punto inicial de la ruta").openPopup();
+
+        // 2. Centro de Pachuca, Hidalgo
+        let marcadorPachuca = L.marker([20.1218, -98.7357]).addTo(map);
+        marcadorPachuca.bindPopup("<b>Centro de Pachuca</b><br>Punto final de la ruta");
+
+        // 3. Mineral del Monte (Real del Monte) - punto intermedio opcional
+        let marcadorMineral = L.marker([20.1394, -98.6732]).addTo(map);
+        marcadorMineral.bindPopup("<b>Mineral del Monte</b><br>Pueblo mágico");
+
+        // ==========================================
+        // SECCIÓN DE RUTAS Y MARCADORES DINÁMICOS
+        // ==========================================
+        let rutas = [];               // Array de objetos {id, color, marcadores[], polyline}
+        let rutaActualId = null;     // ID de la ruta que se está editando
+        let contadorRutas = 0;       // Para asignar IDs únicos
+        let coloresDisponibles = ['red', 'green', 'orange', 'purple', 'brown', 'pink', 'cyan', 'magenta'];
+        let siguienteColorIndex = 0;
+
+        function obtenerColorNuevo() {
+            let color = coloresDisponibles[siguienteColorIndex % coloresDisponibles.length];
+            siguienteColorIndex++;
+            return color;
+        }
+
+        // CAMBIO JAVASCRIPT: Función `crearIconoColor` para pines SVG dinámicos del color de la ruta
+        // Explicación: Genera un pin con formato Leaflet divIcon usando código SVG relleno con el color de la ruta.
+        function crearIconoColor(color) {
+            const svgHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" style="filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.3));">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="${color}" stroke="#ffffff" stroke-width="1.5"/>
+        </svg>
+    `;
+            return L.divIcon({
+                html: svgHTML,
+                className: 'marker-custom-icon',
+                iconSize: [36, 36],
+                iconAnchor: [18, 36],
+                popupAnchor: [0, -36]
+            });
+        }
+
+        // CAMBIO JAVASCRIPT: Fórmula matemática de Haversine para distancia geodésica
+        // Explicación: Calcula la distancia real en kilómetros entre dos coordenadas teniendo en cuenta la esfericidad terrestre.
+        function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radio de la Tierra en kilómetros
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distancia en kilómetros
+        }
+
+        // CAMBIO JAVASCRIPT: Formateador de tiempo estimado de viaje
+        // Explicación: Convierte minutos decimales en un string legible con formato (horas, minutos, segundos).
+        function formatearTiempo(minutosTotales) {
+            if (minutosTotales <= 0) return "0 s";
+            if (minutosTotales < 1) {
+                return `${Math.round(minutosTotales * 60)} s`;
+            }
+            const horas = Math.floor(minutosTotales / 60);
+            const minutos = Math.floor(minutosTotales % 60);
+            const segundos = Math.round((minutosTotales % 1) * 60);
+
+            let partes = [];
+            if (horas > 0) partes.push(`${horas} h`);
+            if (minutos > 0) partes.push(`${minutos} min`);
+            if (segundos > 0) partes.push(`${segundos} s`);
+
+            return partes.join(' ');
+        }
+
+        // CAMBIO JAVASCRIPT: Función `obtenerDireccionNominatim` para Geocodificación Inversa
+        // Explicación: Consulta la API de OpenStreetMap Nominatim asíncronamente y actualiza el popup y la tabla con la dirección real.
+        function obtenerDireccionNominatim(lat, lng, markerData, route) {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+
+            fetch(url, {
+                headers: {
+                    'Accept-Language': 'es' // Idioma español preferente
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    let addr = data.address;
+                    let partes = [];
+                    if (addr) {
+                        // Estructuramos una dirección amigable y corta
+                        if (addr.road) {
+                            if (addr.house_number) {
+                                partes.push(`${addr.road} ${addr.house_number}`);
+                            } else {
+                                partes.push(addr.road);
+                            }
+                        }
+                        if (addr.suburb || addr.neighbourhood) {
+                            partes.push(addr.suburb || addr.neighbourhood);
+                        }
+                        if (addr.city || addr.town || addr.village) {
+                            partes.push(addr.city || addr.town || addr.village);
+                        }
+                    }
+
+                    let direccion = partes.join(', ') || data.display_name || markerData.nombre;
+                    markerData.nombre = direccion;
+
+                    // Actualizar popup y tabla dinámicamente
+                    markerData.markerObject.setPopupContent(`<b>${direccion}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`);
+                    actualizarTabla();
+                })
+                .catch(error => {
+                    console.error("Error en geocodificación inversa Nominatim:", error);
+                });
+        }
+
+        // CAMBIO JAVASCRIPT: Función `agregarMarcadorARutaActual` para crear y añadir marcadores al hacer clic
+        // Explicación: Crea el pin del color de la ruta, lo añade a la colección e inicia la carga de dirección y dibujado de polilínea.
+        function agregarMarcadorARutaActual(lat, lng) {
+            const route = rutas.find(r => r.id === rutaActualId);
+            if (!route) return;
+
+            const index = route.marcadores.length + 1;
+            const nombreInicial = `Punto ${index} (Obteniendo dirección...)`;
+
+            let icon = crearIconoColor(route.color);
+            let markerObject = L.marker([lat, lng], { icon: icon }).addTo(map);
+            markerObject.bindPopup(`<b>${nombreInicial}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
+
+            let markerData = {
+                lat: lat,
+                lng: lng,
+                nombre: nombreInicial,
+                markerObject: markerObject
+            };
+
+            route.marcadores.push(markerData);
+
+            // Iniciar geocodificación
+            obtenerDireccionNominatim(lat, lng, markerData, route);
+
+            // Trazar línea en tiempo real (punteada en progreso)
+            actualizarPolylineRuta(route);
+
+            // Actualizar tabla
+            actualizarTabla();
+        }
+
+        // CAMBIO JAVASCRIPT: Función `actualizarPolylineRuta` para la ruta trazada en tiempo real
+        // Explicación: Dibuja o actualiza la línea entre los marcadores. Mientras se edita, es punteada (dashArray).
+        function actualizarPolylineRuta(route) {
+            let latlngs = route.marcadores.map(m => [m.lat, m.lng]);
+            if (route.polyline) {
+                route.polyline.setLatLngs(latlngs);
+            } else {
+                route.polyline = L.polyline(latlngs, {
+                    color: route.color,
+                    weight: 5,
+                    opacity: 0.8,
+                    dashArray: '5, 8' // Efecto punteado mientras se está dibujando
+                }).addTo(map);
+            }
+        }
+
+        // CAMBIO JAVASCRIPT: Función `nuevaRuta` (Botón Nueva Ruta)
+        // Explicación: Inicializa la ruta actual con un ID y color único.
+        function nuevaRuta() {
+            if (rutaActualId !== null) {
+                if (confirm("¿Cancelar la ruta actual y empezar una nueva?")) {
+                    cancelarRuta();
+                } else return;
+            }
+            const id = contadorRutas++;
+            const color = obtenerColorNuevo();
+            const nuevaRutaObj = {
+                id: id,
+                color: color,
+                marcadores: [],
+                polyline: null
+            };
+            rutas.push(nuevaRutaObj);
+            rutaActualId = id;
+            actualizarTabla();
+            alert(`Nueva ruta creada con color ${color.toUpperCase()}. Haz clic en el mapa para añadir puntos.`);
+        }
+
+        // CAMBIO JAVASCRIPT: Función `generarRuta` (Botón Generar Ruta)
+        // Explicación: Consolida la ruta actual, convirtiendo la línea punteada a sólida y ajustando el zoom.
+        function generarRuta() {
+            if (rutaActualId === null) {
+                alert("No hay ninguna ruta activa para generar. Haz clic en 'Nueva Ruta' primero.");
+                return;
+            }
+
+            const route = rutas.find(r => r.id === rutaActualId);
+            if (!route || route.marcadores.length < 2) {
+                alert("Debe haber al menos 2 marcadores en la ruta para poder generarla.");
+                return;
+            }
+
+            if (route.polyline) {
+                route.polyline.setStyle({
+                    dashArray: null, // Línea sólida definitiva
+                    weight: 6,
+                    opacity: 0.95
+                });
+
+                map.fitBounds(route.polyline.getBounds());
+            }
+
+            alert(`¡Ruta generada con éxito con color ${route.color.toUpperCase()}!`);
+            rutaActualId = null;
+            actualizarTabla();
+        }
+
+        // CAMBIO JAVASCRIPT: Función `cancelarRuta` (Botón Cancelar Ruta)
+        // Explicación: Quita marcadores y la polilínea de la ruta activa del mapa y la elimina de la memoria.
+        function cancelarRuta() {
+            if (rutaActualId === null) {
+                alert("No hay ninguna ruta activa para cancelar.");
+                return;
+            }
+
+            const index = rutas.findIndex(r => r.id === rutaActualId);
+            if (index !== -1) {
+                const route = rutas[index];
+                route.marcadores.forEach(m => {
+                    map.removeLayer(m.markerObject);
+                });
+                if (route.polyline) {
+                    map.removeLayer(route.polyline);
+                }
+                rutas.splice(index, 1);
+            }
+
+            rutaActualId = null;
+            actualizarTabla();
+            alert("Se ha cancelado y eliminado la ruta actual.");
+        }
+
+        // CAMBIO JAVASCRIPT: Función `actualizarTablaTramos` para calcular tramo a tramo, distancias y tiempos totales
+        // Explicación: Recorre secuencialmente todos los marcadores agregados a la ruta, calcula la distancia
+        // Haversine entre el punto i y el punto i+1, estima el tiempo a 60 km/h (1 km = 1 min),
+        // rellena la tabla de tramos y actualiza el panel de resumen consolidado con los totales de la ruta.
+        function actualizarTablaTramos(route) {
+            const tbodyTramos = document.getElementById('cuerpoTablaTramos');
+            const resumenDiv = document.getElementById('resumenRuta');
+            tbodyTramos.innerHTML = '';
+
+            if (!route || route.marcadores.length < 2) {
+                tbodyTramos.innerHTML = `<tr><td colspan="3" class="vacio-mensaje">${rutaActualId !== null ? 'Agrega al menos 2 marcadores en tu ruta actual para ver los tramos.' : 'Agrega al menos 2 marcadores en tu ruta para ver los tramos.'}</td></tr>`;
+                resumenDiv.style.display = 'none';
+                return;
+            }
+
+            let distanciaTotal = 0;
+            let tiempoTotalMinutos = 0;
+
+            for (let i = 0; i < route.marcadores.length - 1; i++) {
+                let p1 = route.marcadores[i];
+                let p2 = route.marcadores[i + 1];
+
+                // Cálculo Haversine entre puntos consecutivos
+                let dist = calcularDistanciaHaversine(p1.lat, p1.lng, p2.lat, p2.lng);
+                distanciaTotal += dist;
+
+                // A 60 km/h, 60 km se recorren en 60 minutos. Es decir, 1 km = 1 minuto de viaje.
+                // Tiempo (minutos) = Distancia (km) * 1.
+                let tiempoMinutos = dist;
+                tiempoTotalMinutos += tiempoMinutos;
+
+                let fila = tbodyTramos.insertRow();
+
+                // Columna Tramo
+                let celdaTramo = fila.insertCell(0);
+                celdaTramo.innerHTML = `<strong>${p1.nombre}</strong> <span style="color: ${route.color};">➔</span> <strong>${p2.nombre}</strong>`;
+
+                // Columna Distancia
+                let celdaDist = fila.insertCell(1);
+                celdaDist.innerText = `${dist.toFixed(2)} km`;
+
+                // Columna Tiempo
+                let celdaTiempo = fila.insertCell(2);
+                celdaTiempo.innerText = formatearTiempo(tiempoMinutos);
+
+                // Estilo premium de fila
+                fila.style.borderLeft = `6px solid ${route.color}`;
+            }
+
+            // Actualizar bloque de resumen consolidado
+            resumenDiv.style.display = 'block';
+            resumenDiv.style.borderLeft = `6px solid ${route.color}`;
+            resumenDiv.innerHTML = `
+                <div class="resumen-item">
+                    <span class="resumen-icon">🚗</span>
+                    <span><strong>Kilometraje Total de la Ruta:</strong> <span style="color: ${route.color}; font-size: 17px; font-weight: 700;">${distanciaTotal.toFixed(2)} km</span></span>
+                </div>
+                <div class="resumen-item">
+                    <span class="resumen-icon">⏱️</span>
+                    <span><strong>Tiempo Estimado Total (a 60 km/h):</strong> <span style="color: ${route.color}; font-size: 17px; font-weight: 700;">${formatearTiempo(tiempoTotalMinutos)}</span></span>
+                </div>
+            `;
+        }
+
+        // CAMBIO JAVASCRIPT: Función `actualizarTabla`
+        // Explicación: Vuelca dinámicamente los marcadores a la tabla HTML, asignando bordes del color de su ruta,
+        // y dispara la actualización de la tabla de tramos y el resumen dinámico.
+        function actualizarTabla() {
+            const tbody = document.getElementById('cuerpoTabla');
+            tbody.innerHTML = '';
+
+            let route = rutas.find(r => r.id === rutaActualId);
+
+            if (!route && rutas.length > 0) {
+                route = rutas[rutas.length - 1];
+            }
+
+            if (!route || route.marcadores.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="vacio-mensaje">${rutaActualId !== null ? 'Aún no hay marcadores en esta ruta. Haz clic en el mapa para agregar puntos.' : 'Aún no hay marcadores en esta ruta. Haz clic en "Nueva Ruta" para iniciar.'}</td></tr>`;
+                actualizarTablaTramos(null);
+                return;
+            }
+
+            route.marcadores.forEach((m, idx) => {
+                let fila = tbody.insertRow();
+
+                let celdaLugar = fila.insertCell(0);
+                celdaLugar.innerHTML = `<strong>${m.nombre}</strong>`;
+
+                let celdaLat = fila.insertCell(1);
+                celdaLat.innerText = m.lat.toFixed(6);
+
+                let celdaLng = fila.insertCell(2);
+                celdaLng.innerText = m.lng.toFixed(6);
+
+                // Borde izquierdo estético con el color de su respectiva ruta
+                fila.style.borderLeft = `6px solid ${route.color}`;
+            });
+
+            // Disparar la actualización de tramos y totales de kilometraje/tiempo
+            actualizarTablaTramos(route);
+        }
+
+        // Función principal: obtiene una sola vez la ubicación
+        function obtenerUbicacion() {
+            if (navigator.geolocation) {
+                // Opciones para mayor precisión
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                };
+                navigator.geolocation.getCurrentPosition(mostrarPosicion, mostrarError, options);
+            } else {
+                alert("La geolocalización no es compatible con este navegador.");
+            }
+        }
+
+        // Función que se ejecuta al obtener la posición correctamente (una sola vez)
+        function mostrarPosicion(position) {
+            let lat = position.coords.latitude;
+            let lon = position.coords.longitude;
+            let precision = position.coords.accuracy;
+
+            // Mostrar en la interfaz
+            document.getElementById('latitud').innerHTML = lat;
+            document.getElementById('longitud').innerHTML = lon;
+            document.getElementById('precision').innerHTML = precision + " metros";
+
+            // Centrar el mapa y mover el marcador
+            map.setView([lat, lon], 16);
+            marcador.setLatLng([lat, lon]);
+            marcador.bindPopup(`Estás aquí<br>Lat: ${lat}<br>Lon: ${lon}<br>Nombre: Alejandro Vargas Lazcano`).openPopup();
+            actualizarRutaConUbicacion(lat, lon);
+        }
+
+        // Manejador de errores para getCurrentPosition
+        function mostrarError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Permiso denegado. Habilita la ubicación en la configuración del navegador.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Ubicación no disponible. Intenta de nuevo.");
+                    break;
+                case error.TIMEOUT:
+                    alert("Tiempo de espera agotado. Revisa tu conexión.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Error desconocido al obtener la ubicación.");
+                    break;
+            }
+        }
+
+        function actualizarRutaConUbicacion(lat, lon) {
+            let puntosCompletos = [
+                [19.7895, -98.5523],  // Tepeapulco (fijo)
+                [lat, lon],           // ubicación real del usuario
+                [20.1394, -98.6732],  // Mineral del Monte
+                [20.1218, -98.7357]   // Pachuca
+            ];
+
+            // Si la polilínea ya existe, actualiza sus puntos; si no, créala
+            if (rutaPolyline) {
+                rutaPolyline.setLatLngs(puntosCompletos);
+            } else {
+                rutaPolyline = L.polyline(puntosCompletos, { color: 'blue', weight: 4 }).addTo(map);
+            }
+        }
+
+        // Función para iniciar el seguimiento en tiempo real (watchPosition)
+        function iniciarSeguimiento() {
+            if (navigator.geolocation) {
+                if (watchID !== null) {
+                    // Si ya hay un seguimiento activo, lo detenemos antes de empezar otro
+                    navigator.geolocation.clearWatch(watchID);
+                }
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                };
+                watchID = navigator.geolocation.watchPosition(
+                    function (position) {
+                        let lat = position.coords.latitude;
+                        let lon = position.coords.longitude;
+                        let precision = position.coords.accuracy;
+
+                        // Actualizar los datos en pantalla
+                        document.getElementById('latitud').innerHTML = lat;
+                        document.getElementById('longitud').innerHTML = lon;
+                        document.getElementById('precision').innerHTML = precision + " metros";
+
+                        // Mover el mapa y el marcador
+                        map.setView([lat, lon], 16);
+                        marcador.setLatLng([lat, lon]);
+                        marcador.bindPopup(`Siguiendo: ${lat}, ${lon}`).openPopup();
+                        actualizarRutaConUbicacion(lat, lon); // Actualiza la ruta con la nueva ubicación
+                    },
+                    mostrarError,   // mismo manejador de errores
+                    options
+                );
+
+                let bounds = L.latLngBounds(puntosFijos);
+                map.fitBounds(bounds);
+                let todosLosPuntos = [...puntosFijos, [lat, lon]];
+                map.fitBounds(L.latLngBounds(todosLosPuntos));
+                alert("Seguimiento en tiempo real activado. Se actualizará automáticamente.");
+            } else {
+                alert("Geolocalización no compatible.");
+            }
+        }
+
+        // Función para detener el seguimiento
+        function detenerSeguimiento() {
+            if (watchID !== null) {
+                navigator.geolocation.clearWatch(watchID);
+                watchID = null;
+                alert("Seguimiento detenido.");
+            } else {
+                alert("No hay ningún seguimiento activo.");
+            }
+        }
+
+        function zoomIn() {
+            map.zoomIn();   // Aumenta el nivel de zoom
+        }
+
+        function zoomOut() {
+            map.zoomOut();  // Disminuye el nivel de zoom
+        }
+
+        function actualizarFechaHora() {
+            const ahora = new Date();
+            const fechaHoraStr = ahora.toLocaleString(); // Formato local: dd/mm/aaaa hh:mm:ss
+            document.getElementById('fechahora').innerHTML = fechaHoraStr;
+        }
+
+
+
+        // FUNCIÓN PARA ELIMINAR TODAS LAS RUTAS GENERADAS ANTERIORMENTE
+        function eliminarTodasLasRutas() {
+            if (rutas.length === 0 && rutaPolyline === null) {
+                alert("No hay rutas guardadas para eliminar.");
+                return;
+            }
+
+            if (confirm("¿Estás seguro de que deseas eliminar todas las rutas generadas anteriormente y limpiar el mapa?")) {
+                // Eliminar marcadores y líneas de cada ruta del mapa
+                rutas.forEach(route => {
+                    route.marcadores.forEach(m => {
+                        map.removeLayer(m.markerObject);
+                    });
+                    if (route.polyline) {
+                        map.removeLayer(route.polyline);
+                    }
+                });
+
+                // Limpiar el array de rutas en memoria
+                rutas = [];
+                rutaActualId = null;
+                contadorRutas = 0;
+                siguienteColorIndex = 0;
+
+                // Eliminar también la ruta azul de ubicación si existe
+                if (rutaPolyline) {
+                    map.removeLayer(rutaPolyline);
+                    rutaPolyline = null;
+                }
+
+                // Actualizar tablas e interfaz
+                actualizarTabla();
+                alert("Se han eliminado todas las rutas con éxito y se ha limpiado el mapa.");
+            }
+        }
+
+        // FUNCIÓN PARA DESPLEGAR/OCULTAR EL SUBMENÚ DE COMPARTIR
+        function toggleShareSubmenu() {
+            const submenu = document.getElementById('shareSubmenu');
+            submenu.classList.toggle('mostrar-submenu');
+        }
+
+        // FUNCIÓN PARA COMPARTIR UBICACIÓN ACTUAL POR FACEBOOK
+        function compartirUbicacionFacebook() {
+            const lat = document.getElementById('latitud').innerText;
+            const lon = document.getElementById('longitud').innerText;
+            
+            if (lat === "---" || lon === "---") {
+                alert("Primero debes obtener tu ubicación para poder compartirla.");
+                return;
+            }
+            
+            const urlShare = `https://www.google.com/maps?q=${lat},${lon}`;
+            const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlShare)}`;
+            window.open(fbUrl, '_blank');
+        }
+
+        // FUNCIÓN PARA COMPARTIR UBICACIÓN ACTUAL POR INSTAGRAM
+        function compartirUbicacionInstagram() {
+            const lat = document.getElementById('latitud').innerText;
+            const lon = document.getElementById('longitud').innerText;
+            
+            if (lat === "---" || lon === "---") {
+                alert("Primero debes obtener tu ubicación para poder compartirla.");
+                return;
+            }
+            
+            const mensaje = `📍 Mi ubicación actual:\nLatitud: ${lat}\nLongitud: ${lon}\nGoogle Maps: https://www.google.com/maps?q=${lat},${lon}`;
+            
+            navigator.clipboard.writeText(mensaje).then(() => {
+                alert("¡Ubicación copiada al portapapeles con éxito!\n\nRedirigiendo a Instagram para que puedas pegarla en tus mensajes o historias.");
+                window.open("https://www.instagram.com", '_blank');
+            }).catch(err => {
+                console.error("Error al copiar al portapapeles:", err);
+                alert("No se pudo copiar automáticamente. Copia estos datos:\n\n" + mensaje);
+                window.open("https://www.instagram.com", '_blank');
+            });
+        }
+
+        // FUNCIÓN PARA COMPARTIR UBICACIÓN ACTUAL POR WHATSAPP WEB
+        function compartirUbicacionWhatsApp() {
+            const lat = document.getElementById('latitud').innerText;
+            const lon = document.getElementById('longitud').innerText;
+            
+            if (lat === "---" || lon === "---") {
+                alert("Primero debes obtener tu ubicación para poder compartirla.");
+                return;
+            }
+            
+            const mensaje = `¡Hola! Esta es mi ubicación actual compartida desde mi sitio de geolocalización:\n📍 Latitud: ${lat}\n📍 Longitud: ${lon}\nGoogle Maps: https://www.google.com/maps?q=${lat},${lon}`;
+            const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+            window.open(url, '_blank');
+        }
+
+        // Actualizar inmediatamente y luego cada segundo
+        actualizarFechaHora();
+        setInterval(actualizarFechaHora, 1000);
+    </script>
+</body>
+
+</html>

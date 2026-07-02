@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¿On toy? - Geolocalización</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            text-align: center;
+            background-color: #f9fbfd;
+            color: #333;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .info {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: left;
+            display: inline-block;
+            width: 80%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eaeaea;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 8px;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        /* CAMBIO ESTÉTICO 1: Estilos específicos para los botones de ruta para mejorar la usabilidad (UX) */
+        .btn-nueva {
+            background-color: #6f42c1; /* Púrpura elegante */
+        }
+        .btn-nueva:hover {
+            background-color: #59339e;
+        }
+        .btn-generar {
+            background-color: #28a745; /* Verde para confirmar/generar */
+        }
+        .btn-generar:hover {
+            background-color: #218838;
+        }
+        .btn-cancelar {
+            background-color: #dc3545; /* Rojo para cancelar/peligro */
+        }
+        .btn-cancelar:hover {
+            background-color: #c82333;
+        }
+        .btn-ubicacion {
+            background-color: #007bff;
+        }
+        .btn-ubicacion:hover {
+            background-color: #0056b3;
+        }
+        
+        /* CAMBIO ESTÉTICO 2: Estilo premium para la tabla de marcadores */
+        #tablaRuta {
+            width: 80%;
+            margin: 25px auto;
+            border-collapse: collapse;
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            border: none;
+        }
+        #tablaRuta th {
+            background-color: #343a40;
+            color: #ffffff;
+            padding: 14px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: left;
+            border: none;
+        }
+        #tablaRuta td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #eff2f5;
+            color: #495057;
+            font-size: 14px;
+            text-align: left;
+            border-top: none;
+            border-right: none;
+            border-left: none;
+        }
+        #tablaRuta tr:last-child td {
+            border-bottom: none;
+        }
+        #tablaRuta tr:hover {
+            background-color: #f8f9fa;
+        }
+        .vacio-mensaje {
+            text-align: center !important;
+            color: #6c757d !important;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Práctica de Geolocalización</h1>
+    <h2>¿On toy?</h2>
+    <button onclick="obtenerUbicacion()" class="btn-ubicacion">📍 Obtener mi ubicación</button>
+
+    <div class="info">
+        <p><strong>Latitud:</strong> <span id="latitud">---</span></p>
+        <p><strong>Longitud:</strong> <span id="longitud">---</span></p>
+        <p><strong>Precisión:</strong> <span id="precision">---</span> metros</p>
+        <p><strong>Fecha y hora:</strong> <span id="fechahora">---</span></p>
+    </div>
+    
+    <div>
+        <button onclick="zoomIn()">🔍 Acercar</button>
+        <button onclick="zoomOut()">🔍 Alejar</button>
+    </div>
+
+    <!-- CAMBIO ESTRUCTURAL: Asignación de clases especializadas a los botones de control de ruta -->
+    <div>
+        <button onclick="nuevaRuta()" class="btn-nueva">🚀 Nueva Ruta</button>
+        <button onclick="generarRuta()" class="btn-generar">✏️ Generar Ruta</button>
+        <button onclick="cancelarRuta()" class="btn-cancelar">❌ Cancelar Ruta</button>
+    </div>
+
+    <h3>Marcadores de la ruta actual</h3>
+    <!-- CAMBIO ESTRUCTURAL: Remoción de atributos obsoletos (border="1") de la tabla para controlarla 100% por CSS -->
+    <table id="tablaRuta">
+        <thead>
+            <tr>
+                <th>Lugar</th>
+                <th>Latitud</th>
+                <th>Longitud</th>
+            </tr>
+        </thead>
+        <tbody id="cuerpoTabla">
+            <tr><td colspan="3" class="vacio-mensaje">Aún no hay marcadores en esta ruta. Haz clic en "Nueva Ruta" para iniciar.</td></tr>
+        </tbody>
+    </table>
+
+
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Inicializar mapa con una vista por defecto (Ciudad de México)
+        let map = L.map('map').setView([19.4326, -99.1332], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Escuchar clics en el mapa para añadir marcadores a la ruta actual
+map.on('click', function(e) {
+    if (rutaActualId !== null) {
+        agregarMarcadorARutaActual(e.latlng.lat, e.latlng.lng);
+    } else {
+        alert("Primero crea una nueva ruta (botón 'Nueva Ruta')");
+    }
+});
+        
+        let rutaPolyline; // Variable para almacenar la ruta (polilínea)
+
+        // Marcador inicial (por defecto)
+        let marcador = L.marker([19.4326, -99.1332]).addTo(map);
+        marcador.bindPopup("Ubicación actual").openPopup();
+
+        // Variable para controlar el watch (opcional, para detenerlo luego)
+        let watchID = null;
+        // === TRES MARCADORES FIJOS ADICIONALES PARA SIMULAR RUTA ===
+// 1. Tepeapulco, Hidalgo
+let marcadorTepeapulco = L.marker([19.7895, -98.5523]).addTo(map);
+marcadorTepeapulco.bindPopup("<b>Tepeapulco</b><br>Punto inicial de la ruta").openPopup();
+
+// 2. Centro de Pachuca, Hidalgo
+let marcadorPachuca = L.marker([20.1218, -98.7357]).addTo(map);
+marcadorPachuca.bindPopup("<b>Centro de Pachuca</b><br>Punto final de la ruta");
+
+// 3. Mineral del Monte (Real del Monte) - punto intermedio opcional
+let marcadorMineral = L.marker([20.1394, -98.6732]).addTo(map);
+marcadorMineral.bindPopup("<b>Mineral del Monte</b><br>Pueblo mágico");
+
+// ==========================================
+// SECCIÓN DE RUTAS Y MARCADORES DINÁMICOS
+// ==========================================
+let rutas = [];               // Array de objetos {id, color, marcadores[], polyline}
+let rutaActualId = null;     // ID de la ruta que se está editando
+let contadorRutas = 0;       // Para asignar IDs únicos
+let coloresDisponibles = ['red', 'green', 'orange', 'purple', 'brown', 'pink', 'cyan', 'magenta'];
+let siguienteColorIndex = 0;
+
+function obtenerColorNuevo() {
+    let color = coloresDisponibles[siguienteColorIndex % coloresDisponibles.length];
+    siguienteColorIndex++;
+    return color;
+}
+
+// CAMBIO JAVASCRIPT: Función `crearIconoColor` para pines SVG dinámicos del color de la ruta
+// Explicación: Genera un pin con formato Leaflet divIcon usando código SVG relleno con el color de la ruta.
+function crearIconoColor(color) {
+    const svgHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" style="filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.3));">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="${color}" stroke="#ffffff" stroke-width="1.5"/>
+        </svg>
+    `;
+    return L.divIcon({
+        html: svgHTML,
+        className: 'marker-custom-icon',
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
+        popupAnchor: [0, -36]
+    });
+}
+
+// CAMBIO JAVASCRIPT: Función `obtenerDireccionNominatim` para Geocodificación Inversa
+// Explicación: Consulta la API de OpenStreetMap Nominatim asíncronamente y actualiza el popup y la tabla con la dirección real.
+function obtenerDireccionNominatim(lat, lng, markerData, route) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+    
+    fetch(url, {
+        headers: {
+            'Accept-Language': 'es' // Idioma español preferente
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        let addr = data.address;
+        let partes = [];
+        if (addr) {
+            // Estructuramos una dirección amigable y corta
+            if (addr.road) {
+                if (addr.house_number) {
+                    partes.push(`${addr.road} ${addr.house_number}`);
+                } else {
+                    partes.push(addr.road);
+                }
+            }
+            if (addr.suburb || addr.neighbourhood) {
+                partes.push(addr.suburb || addr.neighbourhood);
+            }
+            if (addr.city || addr.town || addr.village) {
+                partes.push(addr.city || addr.town || addr.village);
+            }
+        }
+        
+        let direccion = partes.join(', ') || data.display_name || markerData.nombre;
+        markerData.nombre = direccion;
+        
+        // Actualizar popup y tabla dinámicamente
+        markerData.markerObject.setPopupContent(`<b>${direccion}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`);
+        actualizarTabla();
+    })
+    .catch(error => {
+        console.error("Error en geocodificación inversa Nominatim:", error);
+    });
+}
+
+// CAMBIO JAVASCRIPT: Función `agregarMarcadorARutaActual` para crear y añadir marcadores al hacer clic
+// Explicación: Crea el pin del color de la ruta, lo añade a la colección e inicia la carga de dirección y dibujado de polilínea.
+function agregarMarcadorARutaActual(lat, lng) {
+    const route = rutas.find(r => r.id === rutaActualId);
+    if (!route) return;
+
+    const index = route.marcadores.length + 1;
+    const nombreInicial = `Punto ${index} (Obteniendo dirección...)`;
+
+    let icon = crearIconoColor(route.color);
+    let markerObject = L.marker([lat, lng], { icon: icon }).addTo(map);
+    markerObject.bindPopup(`<b>${nombreInicial}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
+
+    let markerData = {
+        lat: lat,
+        lng: lng,
+        nombre: nombreInicial,
+        markerObject: markerObject
+    };
+
+    route.marcadores.push(markerData);
+    
+    // Iniciar geocodificación
+    obtenerDireccionNominatim(lat, lng, markerData, route);
+    
+    // Trazar línea en tiempo real (punteada en progreso)
+    actualizarPolylineRuta(route);
+    
+    // Actualizar tabla
+    actualizarTabla();
+}
+
+// CAMBIO JAVASCRIPT: Función `actualizarPolylineRuta` para la ruta trazada en tiempo real
+// Explicación: Dibuja o actualiza la línea entre los marcadores. Mientras se edita, es punteada (dashArray).
+function actualizarPolylineRuta(route) {
+    let latlngs = route.marcadores.map(m => [m.lat, m.lng]);
+    if (route.polyline) {
+        route.polyline.setLatLngs(latlngs);
+    } else {
+        route.polyline = L.polyline(latlngs, {
+            color: route.color,
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '5, 8' // Efecto punteado mientras se está dibujando
+        }).addTo(map);
+    }
+}
+
+// CAMBIO JAVASCRIPT: Función `nuevaRuta` (Botón Nueva Ruta)
+// Explicación: Inicializa la ruta actual con un ID y color único.
+function nuevaRuta() {
+    if (rutaActualId !== null) {
+        if (confirm("¿Cancelar la ruta actual y empezar una nueva?")) {
+            cancelarRuta();
+        } else return;
+    }
+    const id = contadorRutas++;
+    const color = obtenerColorNuevo();
+    const nuevaRutaObj = {
+        id: id,
+        color: color,
+        marcadores: [],   
+        polyline: null
+    };
+    rutas.push(nuevaRutaObj);
+    rutaActualId = id;
+    actualizarTabla();
+    alert(`Nueva ruta creada con color ${color.toUpperCase()}. Haz clic en el mapa para añadir puntos.`);
+}
+
+// CAMBIO JAVASCRIPT: Función `generarRuta` (Botón Generar Ruta)
+// Explicación: Consolida la ruta actual, convirtiendo la línea punteada a sólida y ajustando el zoom.
+function generarRuta() {
+    if (rutaActualId === null) {
+        alert("No hay ninguna ruta activa para generar. Haz clic en 'Nueva Ruta' primero.");
+        return;
+    }
+    
+    const route = rutas.find(r => r.id === rutaActualId);
+    if (!route || route.marcadores.length < 2) {
+        alert("Debe haber al menos 2 marcadores en la ruta para poder generarla.");
+        return;
+    }
+
+    if (route.polyline) {
+        route.polyline.setStyle({
+            dashArray: null, // Línea sólida definitiva
+            weight: 6,
+            opacity: 0.95
+        });
+        
+        map.fitBounds(route.polyline.getBounds());
+    }
+
+    alert(`¡Ruta generada con éxito con color ${route.color.toUpperCase()}!`);
+    rutaActualId = null;
+    actualizarTabla();
+}
+
+// CAMBIO JAVASCRIPT: Función `cancelarRuta` (Botón Cancelar Ruta)
+// Explicación: Quita marcadores y la polilínea de la ruta activa del mapa y la elimina de la memoria.
+function cancelarRuta() {
+    if (rutaActualId === null) {
+        alert("No hay ninguna ruta activa para cancelar.");
+        return;
+    }
+    
+    const index = rutas.findIndex(r => r.id === rutaActualId);
+    if (index !== -1) {
+        const route = rutas[index];
+        route.marcadores.forEach(m => {
+            map.removeLayer(m.markerObject);
+        });
+        if (route.polyline) {
+            map.removeLayer(route.polyline);
+        }
+        rutas.splice(index, 1);
+    }
+    
+    rutaActualId = null;
+    actualizarTabla();
+    alert("Se ha cancelado y eliminado la ruta actual.");
+}
+
+// CAMBIO JAVASCRIPT: Función `actualizarTabla`
+// Explicación: Vuelca dinámicamente los marcadores a la tabla HTML, asignando bordes del color de su ruta.
+function actualizarTabla() {
+    const tbody = document.getElementById('cuerpoTabla');
+    tbody.innerHTML = '';
+
+    let route = rutas.find(r => r.id === rutaActualId);
+    
+    if (!route && rutas.length > 0) {
+        route = rutas[rutas.length - 1];
+    }
+
+    if (!route || route.marcadores.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="vacio-mensaje">${rutaActualId !== null ? 'Aún no hay marcadores en esta ruta. Haz clic en el mapa para agregar puntos.' : 'Aún no hay marcadores en esta ruta. Haz clic en "Nueva Ruta" para iniciar.'}</td></tr>`;
+        return;
+    }
+
+    route.marcadores.forEach((m, idx) => {
+        let fila = tbody.insertRow();
+        
+        let celdaLugar = fila.insertCell(0);
+        celdaLugar.innerHTML = `<strong>${m.nombre}</strong>`;
+        
+        let celdaLat = fila.insertCell(1);
+        celdaLat.innerText = m.lat.toFixed(6);
+        
+        let celdaLng = fila.insertCell(2);
+        celdaLng.innerText = m.lng.toFixed(6);
+
+        // Borde izquierdo estético con el color de su respectiva ruta
+        fila.style.borderLeft = `6px solid ${route.color}`;
+    });
+}
+
+        // Función principal: obtiene una sola vez la ubicación
+        function obtenerUbicacion() {
+            if (navigator.geolocation) {
+                // Opciones para mayor precisión
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                };
+                navigator.geolocation.getCurrentPosition(mostrarPosicion, mostrarError, options);
+            } else {
+                alert("La geolocalización no es compatible con este navegador.");
+            }
+        }
+
+        // Función que se ejecuta al obtener la posición correctamente (una sola vez)
+        function mostrarPosicion(position) {
+            let lat = position.coords.latitude;
+            let lon = position.coords.longitude;
+            let precision = position.coords.accuracy;
+
+            // Mostrar en la interfaz
+            document.getElementById('latitud').innerHTML = lat;
+            document.getElementById('longitud').innerHTML = lon;
+            document.getElementById('precision').innerHTML = precision + " metros";
+
+            // Centrar el mapa y mover el marcador
+            map.setView([lat, lon], 16);
+            marcador.setLatLng([lat, lon]);
+            marcador.bindPopup(`Estás aquí<br>Lat: ${lat}<br>Lon: ${lon}<br>Nombre: Alejandro Vargas Lazcano`).openPopup();
+                actualizarRutaConUbicacion(lat, lon);
+        }
+
+        // Manejador de errores para getCurrentPosition
+        function mostrarError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Permiso denegado. Habilita la ubicación en la configuración del navegador.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Ubicación no disponible. Intenta de nuevo.");
+                    break;
+                case error.TIMEOUT:
+                    alert("Tiempo de espera agotado. Revisa tu conexión.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Error desconocido al obtener la ubicación.");
+                    break;
+            }
+        }
+
+        function actualizarRutaConUbicacion(lat, lon) {
+    let puntosCompletos = [
+        [19.7895, -98.5523],  // Tepeapulco (fijo)
+        [lat, lon],           // ubicación real del usuario
+        [20.1394, -98.6732],  // Mineral del Monte
+        [20.1218, -98.7357]   // Pachuca
+    ];
+    
+    // Si la polilínea ya existe, actualiza sus puntos; si no, créala
+    if (rutaPolyline) {
+        rutaPolyline.setLatLngs(puntosCompletos);
+    } else {
+        rutaPolyline = L.polyline(puntosCompletos, {color: 'blue', weight: 4}).addTo(map);
+    }
+}
+
+        // Función para iniciar el seguimiento en tiempo real (watchPosition)
+        function iniciarSeguimiento() {
+            if (navigator.geolocation) {
+                if (watchID !== null) {
+                    // Si ya hay un seguimiento activo, lo detenemos antes de empezar otro
+                    navigator.geolocation.clearWatch(watchID);
+                }
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                };
+                watchID = navigator.geolocation.watchPosition(
+                    function(position) {
+                        let lat = position.coords.latitude;
+                        let lon = position.coords.longitude;
+                        let precision = position.coords.accuracy;
+
+                        // Actualizar los datos en pantalla
+                        document.getElementById('latitud').innerHTML = lat;
+                        document.getElementById('longitud').innerHTML = lon;
+                        document.getElementById('precision').innerHTML = precision + " metros";
+
+                        // Mover el mapa y el marcador
+                        map.setView([lat, lon], 16);
+                        marcador.setLatLng([lat, lon]);
+                        marcador.bindPopup(`Siguiendo: ${lat}, ${lon}`).openPopup();
+                        actualizarRutaConUbicacion(lat, lon); // Actualiza la ruta con la nueva ubicación
+                    },
+                    mostrarError,   // mismo manejador de errores
+                    options
+                );
+
+                let bounds = L.latLngBounds(puntosFijos);
+                map.fitBounds(bounds);
+                let todosLosPuntos = [...puntosFijos, [lat, lon]];
+                map.fitBounds(L.latLngBounds(todosLosPuntos));
+                alert("Seguimiento en tiempo real activado. Se actualizará automáticamente.");
+            } else {
+                alert("Geolocalización no compatible.");
+            }
+        }
+
+        // Función para detener el seguimiento
+        function detenerSeguimiento() {
+            if (watchID !== null) {
+                navigator.geolocation.clearWatch(watchID);
+                watchID = null;
+                alert("Seguimiento detenido.");
+            } else {
+                alert("No hay ningún seguimiento activo.");
+            }
+        }
+
+        // Opcional: botones adicionales para controlar el seguimiento
+        // Puedes agregarlos en el HTML si lo deseas:
+        // <button onclick="iniciarSeguimiento()">Seguir en tiempo real</button>
+        // <button onclick="detenerSeguimiento()">Detener seguimiento</button>
+        function zoomIn() {
+    map.zoomIn();   // Aumenta el nivel de zoom
+}
+
+function zoomOut() {
+    map.zoomOut();  // Disminuye el nivel de zoom
+}
+
+function actualizarFechaHora() {
+    const ahora = new Date();
+    const fechaHoraStr = ahora.toLocaleString(); // Formato local: dd/mm/aaaa hh:mm:ss
+    document.getElementById('fechahora').innerHTML = fechaHoraStr;
+}
+
+// Actualizar inmediatamente y luego cada segundo
+actualizarFechaHora();
+setInterval(actualizarFechaHora, 1000);
+    </script>
+</body>
+</html>

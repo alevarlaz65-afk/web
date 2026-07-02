@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¿On toy? - Geolocalización</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .info {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: left;
+            display: inline-block;
+            width: 80%;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Práctica de Geolocalización</h1>
+    <h2>¿On toy?</h2>
+    <button onclick="obtenerUbicacion()">Obtener mi ubicación</button>
+
+    <div class="info">
+        <p><strong>Latitud:</strong> <span id="latitud">---</span></p>
+        <p><strong>Longitud:</strong> <span id="longitud">---</span></p>
+        <p><strong>Precisión:</strong> <span id="precision">---</span> metros</p>
+        <p><strong>Fecha y hora:</strong> <span id="fechahora">---</span></p>
+
+    </div>
+    <button onclick="zoomIn()">🔍 Acercar</button>
+<button onclick="zoomOut()">🔍 Alejar</button>
+
+
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Inicializar mapa con una vista por defecto (Ciudad de México)
+        let map = L.map('map').setView([19.4326, -99.1332], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        let rutaPolyline; // Variable para almacenar la ruta (polilínea)
+
+        // Marcador inicial (por defecto)
+        let marcador = L.marker([19.4326, -99.1332]).addTo(map);
+        marcador.bindPopup("Ubicación actual").openPopup();
+
+        // Variable para controlar el watch (opcional, para detenerlo luego)
+        let watchID = null;
+        // === TRES MARCADORES FIJOS ADICIONALES PARA SIMULAR RUTA ===
+// 1. Tepeapulco, Hidalgo
+let marcadorTepeapulco = L.marker([19.7895, -98.5523]).addTo(map);
+marcadorTepeapulco.bindPopup("<b>Tepeapulco</b><br>Punto inicial de la ruta").openPopup();
+
+// 2. Centro de Pachuca, Hidalgo
+let marcadorPachuca = L.marker([20.1218, -98.7357]).addTo(map);
+marcadorPachuca.bindPopup("<b>Centro de Pachuca</b><br>Punto final de la ruta");
+
+// 3. Mineral del Monte (Real del Monte) - punto intermedio opcional
+let marcadorMineral = L.marker([20.1394, -98.6732]).addTo(map);
+marcadorMineral.bindPopup("<b>Mineral del Monte</b><br>Pueblo mágico");
+
+        // Función principal: obtiene una sola vez la ubicación
+        function obtenerUbicacion() {
+            if (navigator.geolocation) {
+                // Opciones para mayor precisión
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                };
+                navigator.geolocation.getCurrentPosition(mostrarPosicion, mostrarError, options);
+            } else {
+                alert("La geolocalización no es compatible con este navegador.");
+            }
+        }
+
+        // Función que se ejecuta al obtener la posición correctamente (una sola vez)
+        function mostrarPosicion(position) {
+            let lat = position.coords.latitude;
+            let lon = position.coords.longitude;
+            let precision = position.coords.accuracy;
+
+            // Mostrar en la interfaz
+            document.getElementById('latitud').innerHTML = lat;
+            document.getElementById('longitud').innerHTML = lon;
+            document.getElementById('precision').innerHTML = precision + " metros";
+
+            // Centrar el mapa y mover el marcador
+            map.setView([lat, lon], 16);
+            marcador.setLatLng([lat, lon]);
+            marcador.bindPopup(`Estás aquí<br>Lat: ${lat}<br>Lon: ${lon}<br>Nombre: Alejandro Vargas Lazcano`).openPopup();
+                actualizarRutaConUbicacion(lat, lon);
+        }
+
+        // Manejador de errores para getCurrentPosition
+        function mostrarError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Permiso denegado. Habilita la ubicación en la configuración del navegador.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Ubicación no disponible. Intenta de nuevo.");
+                    break;
+                case error.TIMEOUT:
+                    alert("Tiempo de espera agotado. Revisa tu conexión.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Error desconocido al obtener la ubicación.");
+                    break;
+            }
+        }
+
+        function actualizarRutaConUbicacion(lat, lon) {
+    let puntosCompletos = [
+        [19.7895, -98.5523],  // Tepeapulco (fijo)
+        [lat, lon],           // ubicación real del usuario
+        [20.1394, -98.6732],  // Mineral del Monte
+        [20.1218, -98.7357]   // Pachuca
+    ];
+    
+    // Si la polilínea ya existe, actualiza sus puntos; si no, créala
+    if (rutaPolyline) {
+        rutaPolyline.setLatLngs(puntosCompletos);
+    } else {
+        rutaPolyline = L.polyline(puntosCompletos, {color: 'blue', weight: 4}).addTo(map);
+    }
+}
+
+        // Función para iniciar el seguimiento en tiempo real (watchPosition)
+        function iniciarSeguimiento() {
+            if (navigator.geolocation) {
+                if (watchID !== null) {
+                    // Si ya hay un seguimiento activo, lo detenemos antes de empezar otro
+                    navigator.geolocation.clearWatch(watchID);
+                }
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                };
+                watchID = navigator.geolocation.watchPosition(
+                    function(position) {
+                        let lat = position.coords.latitude;
+                        let lon = position.coords.longitude;
+                        let precision = position.coords.accuracy;
+
+                        // Actualizar los datos en pantalla
+                        document.getElementById('latitud').innerHTML = lat;
+                        document.getElementById('longitud').innerHTML = lon;
+                        document.getElementById('precision').innerHTML = precision + " metros";
+
+                        // Mover el mapa y el marcador
+                        map.setView([lat, lon], 16);
+                        marcador.setLatLng([lat, lon]);
+                        marcador.bindPopup(`Siguiendo: ${lat}, ${lon}`).openPopup();
+                        actualizarRutaConUbicacion(lat, lon); // Actualiza la ruta con la nueva ubicación
+                    },
+                    mostrarError,   // mismo manejador de errores
+                    options
+                );
+
+                let bounds = L.latLngBounds(puntosFijos);
+                map.fitBounds(bounds);
+                let todosLosPuntos = [...puntosFijos, [lat, lon]];
+                map.fitBounds(L.latLngBounds(todosLosPuntos));
+                alert("Seguimiento en tiempo real activado. Se actualizará automáticamente.");
+            } else {
+                alert("Geolocalización no compatible.");
+            }
+        }
+
+        // Función para detener el seguimiento
+        function detenerSeguimiento() {
+            if (watchID !== null) {
+                navigator.geolocation.clearWatch(watchID);
+                watchID = null;
+                alert("Seguimiento detenido.");
+            } else {
+                alert("No hay ningún seguimiento activo.");
+            }
+        }
+
+        // Opcional: botones adicionales para controlar el seguimiento
+        // Puedes agregarlos en el HTML si lo deseas:
+        // <button onclick="iniciarSeguimiento()">Seguir en tiempo real</button>
+        // <button onclick="detenerSeguimiento()">Detener seguimiento</button>
+        function zoomIn() {
+    map.zoomIn();   // Aumenta el nivel de zoom
+}
+
+function zoomOut() {
+    map.zoomOut();  // Disminuye el nivel de zoom
+}
+
+function actualizarFechaHora() {
+    const ahora = new Date();
+    const fechaHoraStr = ahora.toLocaleString(); // Formato local: dd/mm/aaaa hh:mm:ss
+    document.getElementById('fechahora').innerHTML = fechaHoraStr;
+}
+
+// Actualizar inmediatamente y luego cada segundo
+actualizarFechaHora();
+setInterval(actualizarFechaHora, 1000);
+    </script>
+</body>
+</html>

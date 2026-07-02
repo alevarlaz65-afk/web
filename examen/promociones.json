@@ -1,0 +1,100 @@
+[
+  {
+    "equipoId": "patriots",
+    "titulo": "Jersey Oficial con Descuento",
+    "descripcion": "Obtén un 20% de descuento en el jersey oficial de los New England Patriots utilizando este código en la tienda oficial en línea.",
+    "codigo": "PATS20OFF",
+    "validoHasta": "31 de Diciembre, 2026"
+  },
+  {
+    "equipoId": "patriots",
+    "titulo": "Pase de Estacionamiento Gratis",
+    "descripcion": "En la compra de 2 boletos para cualquier partido en casa en el Gillette Stadium, llévate el pase de estacionamiento de forma gratuita.",
+    "codigo": "GILLETTEPARK",
+    "validoHasta": "30 de Noviembre, 2026"
+  },
+  {
+    "equipoId": "cowboys",
+    "titulo": "Descuento en Palcos VIP",
+    "descripcion": "10% de descuento en la reservación de palcos VIP para el día de partido en el espectacular AT&T Stadium.",
+    "codigo": "COWBOYSVIP",
+    "validoHasta": "15 de Noviembre, 2026"
+  },
+  {
+    "equipoId": "cowboys",
+    "titulo": "Merch 2x1 Star Store",
+    "descripcion": "Lleva cualquier producto de la Star Store al 2x1 presentando este código en taquilla. Válido en jornada de partido.",
+    "codigo": "STAR2X1",
+    "validoHasta": "30 de Octubre, 2026"
+  },
+  {
+    "equipoId": "chiefs",
+    "titulo": "Kit Rojo Fan Pack",
+    "descripcion": "Adquiere el Fan Pack oficial de los Chiefs con jersey, gorra y bufanda con un 25% de descuento este temporada.",
+    "codigo": "CHIEFS25",
+    "validoHasta": "15 de Enero, 2027"
+  },
+  {
+    "equipoId": "realmadrid",
+    "titulo": "Tour Bernabéu Premium",
+    "descripcion": "Disfruta de un 15% de descuento para recorrer el remodelado Estadio Santiago Bernabéu y su museo histórico.",
+    "codigo": "HALAMADRID15",
+    "validoHasta": "15 de Octubre, 2026"
+  },
+  {
+    "equipoId": "realmadrid",
+    "titulo": "Pack Familia Bernabéu",
+    "descripcion": "Entrada doble al museo + 2 camisetas oficiales temporada 2026 con un descuento especial de 30%.",
+    "codigo": "FAMILIARM30",
+    "validoHasta": "31 de Agosto, 2026"
+  },
+  {
+    "equipoId": "barcelona",
+    "titulo": "Barça Immersive Tour",
+    "descripcion": "Compra tu entrada digital para el Barça Immersive Tour y obtén una bufanda de regalo mostrando el código en taquilla.",
+    "codigo": "BARCAFANREGALO",
+    "validoHasta": "31 de Diciembre, 2026"
+  },
+  {
+    "equipoId": "chivas",
+    "titulo": "Día de Partido en Akron",
+    "descripcion": "20% de descuento en boletos de tribuna para el próximo partido de local en el Estadio Akron. ¡Viva el Rebaño!",
+    "codigo": "REBANOSAGRDO20",
+    "validoHasta": "30 de Junio, 2026"
+  },
+  {
+    "equipoId": "lakers",
+    "titulo": "Noche Morada y Dorada",
+    "descripcion": "Obtén 2 boletos de cancha al precio de 1 para un partido de temporada regular. Código válido una sola vez por cuenta.",
+    "codigo": "LAKERSGOLD2X1",
+    "validoHasta": "30 de Marzo, 2027"
+  },
+  {
+    "equipoId": "lakers",
+    "titulo": "Crypto Arena Fan Shop",
+    "descripcion": "30% de descuento en toda la línea de playeras y gorras Lakers en la tienda oficial del Crypto.com Arena.",
+    "codigo": "CRYPTOSHOP30",
+    "validoHasta": "28 de Febrero, 2027"
+  },
+  {
+    "equipoId": "bulls",
+    "titulo": "Noche de Campeones Chicago",
+    "descripcion": "Entrada general + poster gigante firmado de Michael Jordan por solo $99 USD en el United Center esta temporada.",
+    "codigo": "BULLSMJ99",
+    "validoHasta": "15 de Abril, 2027"
+  },
+  {
+    "equipoId": "warriors",
+    "titulo": "Chase Center Experience",
+    "descripcion": "Pack VIP con visita a las instalaciones, sesión de tiros libres y foto oficial con trofeos de los Warriors.",
+    "codigo": "WARRIORSVIP",
+    "validoHasta": "31 de Mayo, 2027"
+  },
+  {
+    "equipoId": "warriors",
+    "titulo": "Splash Brothers Jersey",
+    "descripcion": "Adquiere el jersey de Curry o Thompson con un 20% de descuento en la tienda Chase Center usando este código.",
+    "codigo": "SPLASH20OFF",
+    "validoHasta": "30 de Junio, 2027"
+  }
+]
